@@ -19,7 +19,9 @@ jobs:
             sudo xcode-select -s /Applications/Xcode_16.0.app
           fi
           xcodebuild -version
-          xcodebuild -showsdks
+
+      - name: Download iOS Platform Runtime
+        run: sudo xcodebuild -downloadPlatform iOS
 
       - name: Checkout repository
         uses: actions/checkout@v4
