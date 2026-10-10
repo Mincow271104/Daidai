@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Binaries and python
+*.exe
+server/cloudflared.exe
+__pycache__/
+server/__pycache__/
+*.log
