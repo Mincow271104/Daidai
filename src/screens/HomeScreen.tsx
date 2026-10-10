@@ -22,7 +22,7 @@ import { useFieldStore } from '../store/fieldStore';
 import { useScrollLockStore } from '../store/scrollLockStore';
 import { processAudio, analyzeText } from '../services/api';
 import { insertVocabulary, termExists } from '../database/repository';
-import { scheduleEveningQuest } from '../services/notifications';
+import { scheduleEveningQuest, scheduleMorningPhrase } from '../services/notifications';
 import { getRandomPhrase } from '../constants/phrases';
 import { getField } from '../constants/fields';
 import { speakChinese } from '../utils/speak';
@@ -123,6 +123,7 @@ export function HomeScreen() {
       if (savedItems.length > 0) {
         const previewText = itemsToSave[0]?.sentence_en || '';
         await scheduleEveningQuest(previewText.slice(0, 60));
+        await scheduleMorningPhrase();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setMascotState(
           'eureka',

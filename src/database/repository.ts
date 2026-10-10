@@ -1100,6 +1100,68 @@ export async function setAutoSpeakSetting(enabled: boolean): Promise<void> {
   );
 }
 
+// ─── Notification Settings ─────────────────────────────────────────
+
+export interface NotificationSettings {
+  eveningEnabled: boolean; // Nhắc ôn tập buổi tối (20:30)
+  streakEnabled: boolean;  // Cảnh báo cứu Streak (21:45)
+  morningEnabled: boolean; // Cụm từ buổi sáng (08:15)
+}
+
+export async function getNotificationSettings(): Promise<NotificationSettings> {
+  const db = await getReadyDatabase();
+  const rows = await db.getAllAsync<{ key: string; value: string }>(
+    `SELECT key, value FROM app_settings WHERE key IN ('notif_evening_enabled', 'notif_streak_enabled', 'notif_morning_enabled');`
+  );
+  const map = new Map(rows.map((r) => [r.key, r.value]));
+  return {
+    eveningEnabled: map.get('notif_evening_enabled') !== '0', // Mặc định: bật
+    streakEnabled: map.get('notif_streak_enabled') !== '0',   // Mặc định: bật
+    morningEnabled: map.get('notif_morning_enabled') !== '0', // Mặc định: bật
+  };
+}
+
+export async function setNotificationSettings(
+  settings: Partial<NotificationSettings>
+): Promise<void> {
+  const db = await getReadyDatabase();
+  if (settings.eveningEnabled !== undefined) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO app_settings (key, value) VALUES ('notif_evening_enabled', ?);`,
+      [settings.eveningEnabled ? '1' : '0']
+    );
+  }
+  if (settings.streakEnabled !== undefined) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO app_settings (key, value) VALUES ('notif_streak_enabled', ?);`,
+      [settings.streakEnabled ? '1' : '0']
+    );
+  }
+  if (settings.morningEnabled !== undefined) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO app_settings (key, value) VALUES ('notif_morning_enabled', ?);`,
+      [settings.morningEnabled ? '1' : '0']
+    );
+  }
+}
+
+export async function hasCompletedQuestToday(): Promise<boolean> {
+  const db = await getReadyDatabase();
+  const today = getLocalDateString();
+  const row = await db.getFirstAsync<{ value: string }>(
+    `SELECT value FROM app_settings WHERE key = 'last_streak_date';`
+  );
+  return row?.value === today;
+}
+
+export async function getRandomLearnedWord(): Promise<VocabularyItem | null> {
+  const db = await getReadyDatabase();
+  const row = await db.getFirstAsync<any>(
+    `SELECT * FROM vocabulary ORDER BY RANDOM() LIMIT 1;`
+  );
+  return row ? mapVocabRow(row) : null;
+}
+
 // ─── Fuzzy Normalized Cache ─────────────────────────────────────
 
 export async function getFuzzyCache(prefix: string, text: string): Promise<string | null> {

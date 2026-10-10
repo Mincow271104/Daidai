@@ -21,6 +21,7 @@ import {
   getTotalStats,
 } from '../database/repository';
 import { generateQuests, generateSentenceQuests } from '../services/api';
+import { cancelStreakSaverAlert } from '../services/notifications';
 import { getRandomPhrase } from '../constants/phrases';
 import { VocabularyItem, AIQuest } from '../types';
 
@@ -198,6 +199,9 @@ export function QuestScreen() {
         setStreak(newStreak);
         await loadStats();
         await loadVocabulary();
+        if (correctRef.current > 0) {
+          await cancelStreakSaverAlert();
+        }
         setStatus('complete');
         setMascotState('eureka', `Đúng ${correctRef.current}/${sessions.length} câu.`);
       } else {

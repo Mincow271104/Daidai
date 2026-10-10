@@ -8,7 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initDatabase } from './src/database/schema';
-import { requestNotificationPermission } from './src/services/notifications';
+import { requestNotificationPermission, syncAllSmartNotifications } from './src/services/notifications';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ConversationScreen } from './src/screens/ConversationScreen';
 import { QuestScreen } from './src/screens/QuestScreen';
@@ -46,6 +46,7 @@ export default function App() {
       try {
         await initDatabase();
         await requestNotificationPermission();
+        await syncAllSmartNotifications();
       } catch (err) {
         console.error('Setup error:', err);
       } finally {
@@ -56,7 +57,7 @@ export default function App() {
 
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as any;
-      if (data?.type === 'evening_quest') {
+      if (data?.type === 'evening_quest' || data?.type === 'streak_saver') {
         console.log('Navigate to Quest from notification');
       }
     });

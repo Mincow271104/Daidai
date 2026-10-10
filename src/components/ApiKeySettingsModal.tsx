@@ -19,8 +19,15 @@ import {
   setSavedApiKeys,
   getAutoSpeakSetting,
   setAutoSpeakSetting,
+  getNotificationSettings,
+  setNotificationSettings,
+  NotificationSettings,
 } from '../database/repository';
 import { setCustomUserKeys, getGeminiKeys } from '../services/api';
+import {
+  syncAllSmartNotifications,
+  scheduleTestNotification,
+} from '../services/notifications';
 
 interface ApiKeySettingsModalProps {
   visible: boolean;
@@ -36,6 +43,11 @@ export function ApiKeySettingsModal({
   const [keysInput, setKeysInput] = useState('');
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
+    eveningEnabled: true,
+    streakEnabled: true,
+    morningEnabled: true,
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -46,13 +58,15 @@ export function ApiKeySettingsModal({
 
   const loadSettings = async () => {
     try {
-      const [savedKeys, speakEnabled] = await Promise.all([
+      const [savedKeys, speakEnabled, notif] = await Promise.all([
         getSavedApiKeys(),
         getAutoSpeakSetting(),
+        getNotificationSettings(),
       ]);
       const currentAllKeys = getGeminiKeys();
       setActiveKeys(currentAllKeys.length > 0 ? currentAllKeys : savedKeys);
       setAutoSpeak(speakEnabled);
+      setNotifSettings(notif);
       setKeysInput('');
     } catch {
       // ignore
@@ -64,6 +78,24 @@ export function ApiKeySettingsModal({
     Haptics.selectionAsync();
     await setAutoSpeakSetting(value);
     onSettingsChanged?.();
+  };
+
+  const handleToggleNotif = async (key: keyof NotificationSettings, val: boolean) => {
+    const updated = { ...notifSettings, [key]: val };
+    setNotifSettings(updated);
+    Haptics.selectionAsync();
+    await setNotificationSettings({ [key]: val });
+    await syncAllSmartNotifications();
+    onSettingsChanged?.();
+  };
+
+  const handleTestNotif = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await scheduleTestNotification();
+    Alert.alert(
+      'Đã lên lịch test',
+      'DaiDai sẽ gửi thông báo thử sau 2 giây! Bạn có thể khóa màn hình để kiểm tra banner và âm thanh nhé! 🦜'
+    );
   };
 
   const handleAddKeys = async () => {
@@ -168,7 +200,78 @@ export function ApiKeySettingsModal({
               </View>
             </View>
 
-            {/* Tùy chọn 2: Quản lý Gemini API Keys */}
+            {/* Tùy chọn 2: Thông báo Thông minh */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.cardIconBox, { backgroundColor: '#EEF2FF' }]}>
+                  <Feather name="bell" size={18} color="#6366F1" />
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle}>Thông báo Thông minh</Text>
+                  <Text style={styles.cardSubtitle}>
+                    Nhắc ôn tập theo FSRS và bảo vệ ngọn lửa Streak
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.notifList}>
+                {/* 1. Nhắc ôn tập buổi tối */}
+                <View style={styles.notifRow}>
+                  <View style={styles.notifInfo}>
+                    <Text style={styles.notifTitle}>🦜 Nhắc ôn tập buổi tối (20:30)</Text>
+                    <Text style={styles.notifSubtitle}>
+                      Ôn từ vựng sắp quên theo FSRS trước khi đi ngủ
+                    </Text>
+                  </View>
+                  <Switch
+                    value={notifSettings.eveningEnabled}
+                    onValueChange={(v) => handleToggleNotif('eveningEnabled', v)}
+                    trackColor={{ false: '#CBD5E1', true: '#818CF8' }}
+                    thumbColor={notifSettings.eveningEnabled ? '#6366F1' : '#F1F5F9'}
+                  />
+                </View>
+
+                {/* 2. Cứu Streak khẩn cấp */}
+                <View style={styles.notifRow}>
+                  <View style={styles.notifInfo}>
+                    <Text style={styles.notifTitle}>🔥 Cảnh báo cứu Streak (21:45)</Text>
+                    <Text style={styles.notifSubtitle}>
+                      Chỉ gửi khi hôm nay chưa kịp làm bài tập
+                    </Text>
+                  </View>
+                  <Switch
+                    value={notifSettings.streakEnabled}
+                    onValueChange={(v) => handleToggleNotif('streakEnabled', v)}
+                    trackColor={{ false: '#CBD5E1', true: '#818CF8' }}
+                    thumbColor={notifSettings.streakEnabled ? '#6366F1' : '#F1F5F9'}
+                  />
+                </View>
+
+                {/* 3. Khẩu ngữ buổi sáng */}
+                <View style={[styles.notifRow, { borderBottomWidth: 0 }]}>
+                  <View style={styles.notifInfo}>
+                    <Text style={styles.notifTitle}>☕ Khẩu ngữ đi làm buổi sáng (08:15)</Text>
+                    <Text style={styles.notifSubtitle}>
+                      Nạp 1 câu tiếng Đài Loan thực chiến mỗi sáng
+                    </Text>
+                  </View>
+                  <Switch
+                    value={notifSettings.morningEnabled}
+                    onValueChange={(v) => handleToggleNotif('morningEnabled', v)}
+                    trackColor={{ false: '#CBD5E1', true: '#818CF8' }}
+                    thumbColor={notifSettings.morningEnabled ? '#6366F1' : '#F1F5F9'}
+                  />
+                </View>
+              </View>
+
+              {/* Nút gửi thử thông báo */}
+              <Pressable style={styles.testNotifBtn} onPress={handleTestNotif}>
+                <Feather name="send" size={14} color="#6366F1" />
+                <Text style={styles.testNotifBtnText}>Gửi thử thông báo mẫu ngay (2s)</Text>
+              </Pressable>
+            </View>
+
+            {/* Tùy chọn 3: Quản lý Gemini API Keys */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.cardIconBox}>
@@ -430,6 +533,54 @@ const styles = StyleSheet.create({
   },
   helperLink: {
     color: '#6366F1',
+    fontWeight: '700',
+  },
+  notifList: {
+    marginTop: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
+  },
+  notifInfo: {
+    flex: 1,
+  },
+  notifTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  notifSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  testNotifBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    paddingVertical: 11,
+    marginTop: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  testNotifBtnText: {
+    color: '#4F46E5',
+    fontSize: 13,
     fontWeight: '700',
   },
 });
