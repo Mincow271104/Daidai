@@ -422,6 +422,18 @@ export function ConversationScreen() {
         <View style={styles.headerTopRow}>
           <View style={styles.screenHeaderLeft}>
             <Text style={styles.screenTitle} numberOfLines={1}>Hội thoại</Text>
+            {sourceBadge ? (
+              <View style={styles.sourceBadge}>
+                <Feather
+                  name={sourceBadge === 'local' ? 'cpu' : 'cloud'}
+                  size={10}
+                  color={sourceBadge === 'local' ? '#047857' : '#6366F1'}
+                />
+                <Text style={styles.sourceBadgeText}>
+                  {sourceBadge === 'local' ? 'GPU' : 'Cloud'}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.headerActions}>
@@ -477,10 +489,10 @@ export function ConversationScreen() {
             hitSlop={6}
           >
             <Feather name="briefcase" size={13} color="#6366F1" />
-            <Text style={styles.fieldSelectorText} numberOfLines={1}>
+            <Text style={styles.fieldSelectorText} numberOfLines={1} ellipsizeMode="tail">
               {getField(field).label}
             </Text>
-            <Feather name="chevron-down" size={13} color="#6366F1" />
+            <Feather name="chevron-down" size={12} color="#6366F1" />
           </Pressable>
 
           <View style={styles.headerBottomActions}>
@@ -493,7 +505,7 @@ export function ConversationScreen() {
               hitSlop={6}
             >
               <Feather name="compass" size={13} color="#4F46E5" />
-              <Text style={styles.situationalBtnText}>Hỏi AI ngữ cảnh</Text>
+              <Text style={styles.situationalBtnText}>Hỏi AI</Text>
             </Pressable>
 
             {/* Nút Chế độ Trực diện (Split-Screen) */}
@@ -514,19 +526,6 @@ export function ConversationScreen() {
                 {isSplitScreen ? 'Chat dọc' : 'Trực diện'}
               </Text>
             </Pressable>
-
-            {sourceBadge ? (
-              <View style={styles.sourceBadge}>
-                <Feather
-                  name={sourceBadge === 'local' ? 'cpu' : 'cloud'}
-                  size={11}
-                  color={sourceBadge === 'local' ? '#047857' : '#6366F1'}
-                />
-                <Text style={styles.sourceBadgeText}>
-                  {sourceBadge === 'local' ? 'GPU' : 'Cloud'}
-                </Text>
-              </View>
-            ) : null}
           </View>
         </View>
       </View>
@@ -1077,8 +1076,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   screenHeaderLeft: {
-    flexShrink: 0,
-    minWidth: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
   },
   screenTitle: {
     fontSize: 21,
@@ -1097,45 +1098,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 8,
+    gap: 8,
   },
   fieldSelectorBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
-  },
-  fieldSelectorText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4338CA',
-  },
-  situationalBtnBadge: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#EEF2FF',
     borderRadius: 14,
     paddingHorizontal: 9,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C7D2FE',
+    minWidth: 70,
   },
-  situationalBtnText: {
+  fieldSelectorText: {
+    flex: 1,
     fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
+    fontWeight: '700',
+    color: '#4338CA',
   },
   headerBottomActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexShrink: 0,
   },
   headerActions: {
     flexDirection: 'row',
@@ -1144,23 +1132,41 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     justifyContent: 'flex-end',
   },
+  situationalBtnBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexShrink: 0,
+  },
+  situationalBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
   splitModeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    borderRadius: 14,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: '#C7D2FE',
+    flexShrink: 0,
   },
   splitModeBadgeActive: {
     backgroundColor: '#6366F1',
     borderColor: '#6366F1',
   },
   splitModeBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#6366F1',
   },

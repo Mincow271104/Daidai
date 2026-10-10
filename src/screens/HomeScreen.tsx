@@ -266,7 +266,7 @@ export function HomeScreen() {
                 hitSlop={8}
               >
                 <Feather name="briefcase" size={12} color="#6366F1" />
-                <Text style={styles.fieldSelectorText} numberOfLines={1}>
+                <Text style={styles.fieldSelectorText} numberOfLines={1} ellipsizeMode="tail">
                   {getField(field).label}
                 </Text>
                 <Feather name="chevron-down" size={12} color="#6366F1" />
@@ -514,11 +514,13 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderWidth: 1,
     borderColor: '#C7D2FE',
+    maxWidth: 170,
   },
   fieldSelectorText: {
     color: '#4338CA',
     fontSize: 12,
     fontWeight: '700',
+    flexShrink: 1,
   },
   mascotSection: { alignItems: 'center', paddingVertical: 8 },
   transcribedBox: {
