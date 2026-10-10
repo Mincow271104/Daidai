@@ -164,7 +164,18 @@ export function HomeScreen() {
         }
       } catch (err: any) {
         setMascotState('confused', 'Có lỗi xảy ra, thử lại nhé.');
-        Alert.alert('Lỗi', err.message);
+        if (err.message && err.message.includes('API Key')) {
+          Alert.alert(
+            'Chưa có API Key',
+            'Bạn chưa thêm Gemini API Key. Bạn có muốn mở Cài đặt để thêm khóa miễn phí ngay không?',
+            [
+              { text: 'Để sau', style: 'cancel' },
+              { text: 'Mở Cài đặt', onPress: () => setSettingsModalVisible(true) },
+            ]
+          );
+        } else {
+          Alert.alert('Lỗi', err.message);
+        }
       } finally {
         setIsProcessing(false);
       }
@@ -218,7 +229,18 @@ export function HomeScreen() {
       }
     } catch (err: any) {
       setMascotState('confused', 'Có lỗi xảy ra, thử lại nhé.');
-      Alert.alert('Lỗi', err.message);
+      if (err.message && err.message.includes('API Key')) {
+        Alert.alert(
+          'Chưa có API Key',
+          'Bạn chưa thêm Gemini API Key. Bạn có muốn mở Cài đặt để thêm khóa miễn phí ngay không?',
+          [
+            { text: 'Để sau', style: 'cancel' },
+            { text: 'Mở Cài đặt', onPress: () => setSettingsModalVisible(true) },
+          ]
+        );
+      } else {
+        Alert.alert('Lỗi', err.message);
+      }
     } finally {
       setIsProcessing(false);
     }

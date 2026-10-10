@@ -448,7 +448,11 @@ async function callGemini<T>(
   customSystem?: string
 ): Promise<T> {
   const keys = getGeminiKeys();
-  if (keys.length === 0) throw new Error('Chưa cấu hình EXPO_PUBLIC_GEMINI_API_KEY trong file .env');
+  if (keys.length === 0) {
+    throw new Error(
+      'Bạn chưa thêm Gemini API Key. Vui lòng bấm biểu tượng Cài đặt (⚙️) ở góc trên để thêm API Key miễn phí nhé!'
+    );
+  }
 
   // Chuẩn hóa parts: nếu có inline_data (snake_case) thì đổi thành inlineData (camelCase)
   const normalizedParts = parts.map((p) => {
