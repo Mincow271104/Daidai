@@ -9,19 +9,12 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
-      - name: Select Xcode 16.1
+      - name: Verify Xcode & Swift Version
         run: |
-          if [ -d "/Applications/Xcode_16.1.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.1.app
-          elif [ -d "/Applications/Xcode_16.0.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.0.app
-          fi
           xcodebuild -version
-
-      - name: Download iOS Platform Runtime
-        run: sudo xcodebuild -downloadPlatform iOS
+          swift --version
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,23 +31,10 @@ jobs:
       - name: Expo Prebuild (Generate iOS native project)
         run: npx expo prebuild --platform ios --clean
 
-      - name: Setup Node Binary for Xcode & Disable Sandbox
+      - name: Setup Node Binary for Xcode
         run: |
           cd ios
-          # 1. Cố định đường dẫn Node.js cho mọi script build của React Native
           echo "export NODE_BINARY=$(which node)" > .xcode.env.local
-          cat .xcode.env.local
-
-          # 2. Cấu hình Podfile tắt triệt để Sandbox của Xcode 16 trên toàn bộ Pod targets
-          ruby -e '
-            content = File.read("Podfile")
-            patch = "    installer.pods_project.targets.each do |target|\n      target.build_configurations.each do |config|\n        config.build_settings[\"ENABLE_USER_SCRIPT_SANDBOXING\"] = \"NO\"\n      end\n    end\n"
-            if content.include?("post_install do |installer|")
-              content.sub!("post_install do |installer|", "post_install do |installer|\n" + patch)
-              File.write("Podfile", content)
-              puts "Patched Podfile post_install successfully"
-            end
-          '
 
       - name: CocoaPods Install
         run: |
