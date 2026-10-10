@@ -43,11 +43,13 @@ jobs:
       - name: Build Unsigned iOS App
         run: |
           cd ios
-          SCHEME_NAME=$(xcodebuild -list -json | python3 -c "import sys, json; print(json.load(sys.stdin)['workspace']['schemes'][0])")
-          echo "Building Scheme: $SCHEME_NAME"
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json 2>/dev/null | python3 -c "import sys, json; data=json.load(sys.stdin); print((data.get('workspace', {}).get('schemes') or data.get('project', {}).get('schemes') or ['DaiDai'])[0])" 2>/dev/null || echo "DaiDai")
+          echo "Selected Workspace: $WORKSPACE"
+          echo "Selected Scheme: $SCHEME"
 
-          xcodebuild -workspace *.xcworkspace \
-            -scheme "$SCHEME_NAME" \
+          xcodebuild -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
@@ -59,7 +61,9 @@ jobs:
       - name: Package into IPA
         run: |
           mkdir -p Payload
-          cp -R ios/build/Build/Products/Release-iphoneos/*.app Payload/
+          APP_PATH=$(find ios/build -name "*.app" -type d | head -n 1)
+          echo "Found compiled app at: $APP_PATH"
+          cp -R "$APP_PATH" Payload/
           zip -qr daidai.ipa Payload
           ls -lh daidai.ipa
 
