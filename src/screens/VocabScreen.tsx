@@ -18,10 +18,12 @@ import {
 } from '../database/repository';
 import { Topic, TOPICS } from '../constants/topics';
 import { TopicPickerModal } from '../components/TopicPickerModal';
+import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
 import { VocabularyItem } from '../types';
 import { useScrollLockStore } from '../store/scrollLockStore';
 
 export function VocabScreen() {
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const isScrollLocked = useScrollLockStore((s) => s.isScrollLocked);
   const isFocused = useIsFocused();
   // Tab mặc định: 'communication'
@@ -155,8 +157,20 @@ export function VocabScreen() {
         <View style={styles.screenHeaderLeft}>
           <Text style={styles.screenTitle}>Kho từ vựng</Text>
         </View>
-        <View style={styles.totalBadge}>
-          <Text style={styles.totalBadgeText}>{stats.total} từ</Text>
+        <View style={styles.headerRightActions}>
+          <View style={styles.totalBadge}>
+            <Text style={styles.totalBadgeText}>{stats.total} từ</Text>
+          </View>
+          <Pressable
+            style={styles.settingsBtn}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setSettingsModalVisible(true);
+            }}
+            hitSlop={8}
+          >
+            <Feather name="settings" size={15} color="#475569" />
+          </Pressable>
         </View>
       </View>
 
@@ -355,6 +369,11 @@ export function VocabScreen() {
         }}
         title="Quản lý & Tạo chủ đề"
       />
+
+      <ApiKeySettingsModal
+        visible={settingsModalVisible}
+        onClose={() => setSettingsModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -368,6 +387,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  settingsBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   screenHeaderLeft: {
     flex: 1,

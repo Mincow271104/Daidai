@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { Mascot } from '../components/Mascot';
 import { QuestCard } from '../components/QuestCard';
 import { DialogueModal } from '../components/DialogueModal';
+import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
 import { useMascotStore } from '../store/mascotStore';
 import { useVocabularyStore } from '../store/vocabularyStore';
 import { useFieldStore } from '../store/fieldStore';
@@ -56,6 +57,7 @@ export function QuestScreen() {
   const correctRef = useRef(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [isReviewingOld, setIsReviewingOld] = useState(false);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
   // Tải thông tin thống kê số lượng từ cần ôn (chạy tức thì trên SQLite, không gọi AI, không chạy đếm giờ)
   const refreshCounts = useCallback(async () => {
@@ -240,11 +242,26 @@ export function QuestScreen() {
           </View>
         )}
 
-        {streak > 0 && (
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakBadgeText}>🔥 {streak} ngày</Text>
-          </View>
-        )}
+        <View style={styles.headerRightActions}>
+          {streak > 0 && (
+            <View style={styles.streakBadge}>
+              <Text style={styles.streakBadgeText}>🔥 {streak} ngày</Text>
+            </View>
+          )}
+
+          {!isQuizActive && (
+            <Pressable
+              style={styles.settingsBtn}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setSettingsModalVisible(true);
+              }}
+              hitSlop={8}
+            >
+              <Feather name="settings" size={15} color="#475569" />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* 2 Tab trên cùng: Giao tiếp vs Chuyên ngành */}
@@ -615,6 +632,11 @@ export function QuestScreen() {
           refreshCounts();
         }}
       />
+
+      <ApiKeySettingsModal
+        visible={settingsModalVisible}
+        onClose={() => setSettingsModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -628,6 +650,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 6,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  settingsBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   screenHeaderLeft: {
     flex: 1,

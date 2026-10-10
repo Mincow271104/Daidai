@@ -11,6 +11,7 @@ import { useVocabularyStore } from '../store/vocabularyStore';
 import { FIELDS, getField } from '../constants/fields';
 import { suggestTerms } from '../services/api';
 import { insertVocabulary, termExists } from '../database/repository';
+import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
 import { AITerm } from '../types';
 
 export function FieldScreen() {
@@ -19,6 +20,7 @@ export function FieldScreen() {
   const [suggestions, setSuggestions] = useState<AITerm[]>([]);
   const [loading, setLoading] = useState(false);
   const [addedTerms, setAddedTerms] = useState<Set<string>>(new Set());
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
   useEffect(() => {
     loadFieldStore();
@@ -91,6 +93,16 @@ export function FieldScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.screenHeader}>
         <Text style={styles.screenTitle}>Chuyên ngành</Text>
+        <Pressable
+          style={styles.settingsBtn}
+          onPress={() => {
+            Haptics.selectionAsync();
+            setSettingsModalVisible(true);
+          }}
+          hitSlop={8}
+        >
+          <Feather name="settings" size={15} color="#475569" />
+        </Pressable>
       </View>
 
       {/* Danh sách ngành nghề cuộn ngang */}
@@ -182,6 +194,11 @@ export function FieldScreen() {
           }
         />
       )}
+
+      <ApiKeySettingsModal
+        visible={settingsModalVisible}
+        onClose={() => setSettingsModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -189,9 +206,22 @@ export function FieldScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFFDF9' },
   screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  settingsBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   screenTitle: {
     fontSize: 22,

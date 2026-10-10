@@ -24,10 +24,7 @@ import {
   NotificationSettings,
 } from '../database/repository';
 import { setCustomUserKeys, getGeminiKeys } from '../services/api';
-import {
-  syncAllSmartNotifications,
-  scheduleTestNotification,
-} from '../services/notifications';
+import { syncAllSmartNotifications } from '../services/notifications';
 
 interface ApiKeySettingsModalProps {
   visible: boolean;
@@ -87,15 +84,6 @@ export function ApiKeySettingsModal({
     await setNotificationSettings({ [key]: val });
     await syncAllSmartNotifications();
     onSettingsChanged?.();
-  };
-
-  const handleTestNotif = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await scheduleTestNotification();
-    Alert.alert(
-      'Đã lên lịch test',
-      'DaiDai sẽ gửi thông báo thử sau 2 giây! Bạn có thể khóa màn hình để kiểm tra banner và âm thanh nhé! 🦜'
-    );
   };
 
   const handleAddKeys = async () => {
@@ -208,20 +196,15 @@ export function ApiKeySettingsModal({
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle}>Thông báo Thông minh</Text>
-                  <Text style={styles.cardSubtitle}>
-                    Nhắc ôn tập theo FSRS và bảo vệ ngọn lửa Streak
-                  </Text>
                 </View>
               </View>
 
               <View style={styles.notifList}>
                 {/* 1. Nhắc ôn tập buổi tối */}
                 <View style={styles.notifRow}>
-                  <View style={styles.notifInfo}>
-                    <Text style={styles.notifTitle}>🦜 Nhắc ôn tập buổi tối (20:30)</Text>
-                    <Text style={styles.notifSubtitle}>
-                      Ôn từ vựng sắp quên theo FSRS trước khi đi ngủ
-                    </Text>
+                  <View style={styles.notifTitleRow}>
+                    <Feather name="moon" size={15} color="#475569" />
+                    <Text style={styles.notifTitle}>Nhắc ôn tập buổi tối (20:30)</Text>
                   </View>
                   <Switch
                     value={notifSettings.eveningEnabled}
@@ -233,11 +216,9 @@ export function ApiKeySettingsModal({
 
                 {/* 2. Cứu Streak khẩn cấp */}
                 <View style={styles.notifRow}>
-                  <View style={styles.notifInfo}>
-                    <Text style={styles.notifTitle}>🔥 Cảnh báo cứu Streak (21:45)</Text>
-                    <Text style={styles.notifSubtitle}>
-                      Chỉ gửi khi hôm nay chưa kịp làm bài tập
-                    </Text>
+                  <View style={styles.notifTitleRow}>
+                    <Feather name="zap" size={15} color="#475569" />
+                    <Text style={styles.notifTitle}>Cảnh báo cứu Streak (21:45)</Text>
                   </View>
                   <Switch
                     value={notifSettings.streakEnabled}
@@ -249,11 +230,9 @@ export function ApiKeySettingsModal({
 
                 {/* 3. Khẩu ngữ buổi sáng */}
                 <View style={[styles.notifRow, { borderBottomWidth: 0 }]}>
-                  <View style={styles.notifInfo}>
-                    <Text style={styles.notifTitle}>☕ Khẩu ngữ đi làm buổi sáng (08:15)</Text>
-                    <Text style={styles.notifSubtitle}>
-                      Nạp 1 câu tiếng Đài Loan thực chiến mỗi sáng
-                    </Text>
+                  <View style={styles.notifTitleRow}>
+                    <Feather name="sun" size={15} color="#475569" />
+                    <Text style={styles.notifTitle}>Khẩu ngữ đi làm buổi sáng (08:15)</Text>
                   </View>
                   <Switch
                     value={notifSettings.morningEnabled}
@@ -263,12 +242,6 @@ export function ApiKeySettingsModal({
                   />
                 </View>
               </View>
-
-              {/* Nút gửi thử thông báo */}
-              <Pressable style={styles.testNotifBtn} onPress={handleTestNotif}>
-                <Feather name="send" size={14} color="#6366F1" />
-                <Text style={styles.testNotifBtnText}>Gửi thử thông báo mẫu ngay (2s)</Text>
-              </Pressable>
             </View>
 
             {/* Tùy chọn 3: Quản lý Gemini API Keys */}
@@ -279,9 +252,6 @@ export function ApiKeySettingsModal({
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle}>Danh sách Gemini API Key</Text>
-                  <Text style={styles.cardSubtitle}>
-                    Tự động xoay tua khi một khóa chạm hạn ngạch 429
-                  </Text>
                 </View>
               </View>
 
@@ -334,9 +304,7 @@ export function ApiKeySettingsModal({
               </View>
 
               <Text style={styles.helperText}>
-                💡 Lấy khóa miễn phí tại{' '}
-                <Text style={styles.helperLink}>aistudio.google.com</Text>. Nhập 2–3 khóa để không
-                lo hết quota khi sử dụng cả ngày!
+                Lấy khóa tại <Text style={styles.helperLink}>aistudio.google.com</Text>
               </Text>
             </View>
 
@@ -547,40 +515,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     gap: 12,
   },
-  notifInfo: {
+  notifTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     flex: 1,
   },
   notifTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
-  },
-  notifSubtitle: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  testNotifBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    paddingVertical: 11,
-    marginTop: 10,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-  },
-  testNotifBtnText: {
-    color: '#4F46E5',
-    fontSize: 13,
-    fontWeight: '700',
   },
 });

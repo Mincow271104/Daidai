@@ -418,13 +418,84 @@ export function ConversationScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
-        {/* Hàng 1: Tiêu đề & Các nút chức năng phiên chat */}
+        {/* Hàng 1: Tiêu đề & Quản lý phiên + Nút Cài đặt ở góc phải ngoài cùng */}
         <View style={styles.headerTopRow}>
           <View style={styles.screenHeaderLeft}>
             <Text style={styles.screenTitle} numberOfLines={1}>Hội thoại</Text>
           </View>
 
           <View style={styles.headerActions}>
+            {/* Nút tạo mới */}
+            <Pressable
+              style={styles.newChatBtn}
+              onPress={handleStartNewSession}
+              hitSlop={8}
+            >
+              <Feather name="plus" size={14} color="#6366F1" />
+              <Text style={styles.newChatText}>Mới</Text>
+            </Pressable>
+
+            {/* Nút Lịch sử phiên */}
+            <Pressable
+              style={styles.historyBtn}
+              onPress={() => setHistoryModalVisible(true)}
+              hitSlop={8}
+            >
+              <Feather name="clock" size={15} color="#475569" />
+              {sessions.length > 0 && (
+                <View style={styles.historyCountBadge}>
+                  <Text style={styles.historyCountText}>{sessions.length}</Text>
+                </View>
+              )}
+            </Pressable>
+
+            {/* Nút Cài đặt & API Key - Luôn ở góc ngoài cùng bên phải */}
+            <Pressable
+              style={styles.settingsIconBtn}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setSettingsModalVisible(true);
+              }}
+              hitSlop={8}
+            >
+              <Feather name="settings" size={15} color="#475569" />
+            </Pressable>
+
+            {messages.length > 0 && (
+              <Pressable onPress={handleClearSession} hitSlop={10} style={styles.clearBtn}>
+                <Feather name="trash-2" size={15} color="#94A3B8" />
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* Hàng 2: Chọn Chuyên ngành & Chế độ đối diện / Hỏi AI */}
+        <View style={styles.headerBottomRow}>
+          <Pressable
+            style={styles.fieldSelectorBadge}
+            onPress={() => setFieldModalVisible(true)}
+            hitSlop={6}
+          >
+            <Feather name="briefcase" size={13} color="#6366F1" />
+            <Text style={styles.fieldSelectorText} numberOfLines={1}>
+              {getField(field).label}
+            </Text>
+            <Feather name="chevron-down" size={13} color="#6366F1" />
+          </Pressable>
+
+          <View style={styles.headerBottomActions}>
+            <Pressable
+              style={styles.situationalBtnBadge}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSituationalModalVisible(true);
+              }}
+              hitSlop={6}
+            >
+              <Feather name="compass" size={13} color="#4F46E5" />
+              <Text style={styles.situationalBtnText}>Hỏi AI ngữ cảnh</Text>
+            </Pressable>
+
             {/* Nút Chế độ Trực diện (Split-Screen) */}
             <Pressable
               style={[styles.splitModeBadge, isSplitScreen && styles.splitModeBadgeActive]}
@@ -444,88 +515,19 @@ export function ConversationScreen() {
               </Text>
             </Pressable>
 
-            {/* Nút Cài đặt & API Key */}
-            <Pressable
-              style={styles.settingsIconBtn}
-              onPress={() => {
-                Haptics.selectionAsync();
-                setSettingsModalVisible(true);
-              }}
-              hitSlop={8}
-            >
-              <Feather name="settings" size={15} color="#475569" />
-            </Pressable>
-
-            {/* Nút Lịch sử 5 phiên */}
-            <Pressable
-              style={styles.historyBtn}
-              onPress={() => setHistoryModalVisible(true)}
-              hitSlop={8}
-            >
-              <Feather name="clock" size={15} color="#475569" />
-              {sessions.length > 0 && (
-                <View style={styles.historyCountBadge}>
-                  <Text style={styles.historyCountText}>{sessions.length}</Text>
-                </View>
-              )}
-            </Pressable>
-
-            {/* Nút tạo mới */}
-            <Pressable
-              style={styles.newChatBtn}
-              onPress={handleStartNewSession}
-              hitSlop={8}
-            >
-              <Feather name="plus" size={14} color="#6366F1" />
-              <Text style={styles.newChatText}>Mới</Text>
-            </Pressable>
-
-            {messages.length > 0 && (
-              <Pressable onPress={handleClearSession} hitSlop={10} style={styles.clearBtn}>
-                <Feather name="trash-2" size={15} color="#94A3B8" />
-              </Pressable>
-            )}
+            {sourceBadge ? (
+              <View style={styles.sourceBadge}>
+                <Feather
+                  name={sourceBadge === 'local' ? 'cpu' : 'cloud'}
+                  size={11}
+                  color={sourceBadge === 'local' ? '#047857' : '#6366F1'}
+                />
+                <Text style={styles.sourceBadgeText}>
+                  {sourceBadge === 'local' ? 'GPU' : 'Cloud'}
+                </Text>
+              </View>
+            ) : null}
           </View>
-        </View>
-
-        {/* Hàng 2: Chọn Chuyên ngành & Hỏi AI ngữ cảnh & Trạng thái Cloud/GPU */}
-        <View style={styles.headerBottomRow}>
-          <Pressable
-            style={styles.fieldSelectorBadge}
-            onPress={() => setFieldModalVisible(true)}
-            hitSlop={6}
-          >
-            <Feather name="briefcase" size={13} color="#6366F1" />
-            <Text style={styles.fieldSelectorText} numberOfLines={1}>
-              {getField(field).label}
-            </Text>
-            <Feather name="chevron-down" size={13} color="#6366F1" />
-          </Pressable>
-
-          <Pressable
-            style={styles.situationalBtnBadge}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setSituationalModalVisible(true);
-            }}
-            hitSlop={6}
-          >
-            <Feather name="compass" size={13} color="#4F46E5" />
-            <Text style={styles.situationalBtnText}>Hỏi AI ngữ cảnh</Text>
-          </Pressable>
-
-          {sourceBadge ? (
-            <View style={styles.sourceBadge}>
-              <Feather
-                name={sourceBadge === 'local' ? 'cpu' : 'cloud'}
-                size={11}
-                color={sourceBadge === 'local' ? '#047857' : '#6366F1'}
-              />
-              <Text style={styles.sourceBadgeText}>
-                {sourceBadge === 'local' ? 'GPU' : 'Cloud'}
-              </Text>
-            </View>
-          ) : null}
         </View>
       </View>
 
@@ -1130,10 +1132,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
   },
+  headerBottomActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     flexShrink: 1,
     justifyContent: 'flex-end',
   },
