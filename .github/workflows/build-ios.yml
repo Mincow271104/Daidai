@@ -9,8 +9,17 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
+      - name: Select Xcode 16.1+
+        run: |
+          if [ -d "/Applications/Xcode_16.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app
+          elif [ -d "/Applications/Xcode_16.1.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.app
+          fi
+          xcodebuild -version
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
