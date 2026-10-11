@@ -298,9 +298,9 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
             <View
               style={[
                 styles.badge,
-                result.score >= 0.85
+                result.percentage >= 85
                   ? styles.badgeGood
-                  : result.score >= 0.6
+                  : result.percentage >= 60
                   ? styles.badgeMid
                   : styles.badgeLow,
               ]}
