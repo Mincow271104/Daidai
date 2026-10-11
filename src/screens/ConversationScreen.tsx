@@ -220,8 +220,6 @@ export function ConversationScreen() {
   // Bắt đầu ghi âm
   const handleStartRecording = async (sender: 'me' | 'partner') => {
     if (recorder.isRecording || isProcessing) return;
-    const online = await ensureOnline('Dịch hội thoại');
-    if (!online) return;
     recordingSenderRef.current = sender;
     setRecordingSender(sender);
     const ok = await recorder.startRecording();
@@ -259,6 +257,8 @@ export function ConversationScreen() {
     durationMs: number,
     sender: 'me' | 'partner'
   ) => {
+    const online = await ensureOnline('Dịch hội thoại');
+    if (!online) return;
     setIsProcessing(true);
     try {
       // 1. Nhận diện giọng nói STT (Local GPU 16kHz VAD đa ngữ trước, tự động fallback Gemini Multimodal)

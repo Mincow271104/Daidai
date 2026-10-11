@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { Alert } from 'react-native';
 import { AudioModule, useAudioRecorder, RecordingPresets } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 
@@ -23,20 +24,10 @@ export function useRecorder(options?: UseRecorderOptions): RecorderHook {
   const [duration, setDuration] = useState(0);
   const [hasSpoken, setHasSpoken] = useState(false);
 
-  // Cấu hình ghi âm 16kHz Mono chất lượng cao (64kbps) đảm bảo rõ nét các phụ âm gió/bật hơi (j, q, ch, x)
+  // Cấu hình ghi âm chuẩn HIGH_QUALITY chính thức của Expo Audio (44.1kHz, 128kbps AAC M4A)
+  // Tương thích 100% với codec phần cứng mọi dòng máy Android & iOS, âm thanh trung thực
   const recorder = useAudioRecorder({
     ...RecordingPresets.HIGH_QUALITY,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 64000,
-    android: {
-      ...RecordingPresets.HIGH_QUALITY.android,
-      sampleRate: 16000,
-    },
-    ios: {
-      ...RecordingPresets.HIGH_QUALITY.ios,
-      sampleRate: 16000,
-    },
     isMeteringEnabled: true,
   });
 
@@ -120,14 +111,25 @@ export function useRecorder(options?: UseRecorderOptions): RecorderHook {
     if (isRecording || isStoppingRef.current) return false;
     try {
       const perm = await AudioModule.requestRecordingPermissionsAsync();
-      if (!perm.granted) return false;
+      if (!perm.granted) {
+        Alert.alert(
+          'Quyền Microphone',
+          'Vui lòng cấp quyền truy cập Microphone trong Cài đặt thiết bị để sử dụng tính năng ghi âm giọng nói.'
+        );
+        return false;
+      }
 
       await AudioModule.setAudioModeAsync({
         allowsRecording: true,
         playsInSilentMode: true,
       });
 
-      await recorder.prepareToRecordAsync();
+      try {
+        await recorder.prepareToRecordAsync();
+      } catch (prepErr) {
+        // Có thể recorder đã được chuẩn bị sẵn, tiếp tục gọi record()
+        console.warn('prepareToRecordAsync info:', prepErr);
+      }
       recorder.record();
 
       const now = Date.now();

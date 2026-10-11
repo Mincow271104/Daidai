@@ -92,7 +92,7 @@ export function initNetworkListener(): () => void {
  */
 export async function ensureOnline(featureName?: string): Promise<boolean> {
   const { isConnected, isInternetReachable } = await checkNetworkStatus();
-  if (!isConnected || !isInternetReachable) {
+  if (!isConnected) {
     Alert.alert(
       'Không có kết nối Internet',
       featureName
