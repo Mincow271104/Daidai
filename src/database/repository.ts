@@ -480,7 +480,8 @@ export async function getTotalStats(
   return { total: all.length, mastered, due: all.length - mastered };
 }
 
-function normalizeTerm(str: string): string {
+export function normalizeTerm(str: string): string {
+  if (!str) return '';
   return str
     .trim()
     .toLowerCase()
@@ -490,21 +491,27 @@ function normalizeTerm(str: string): string {
 
 export async function termExists(
   originalTerm: string,
-  kind?: 'term' | 'sentence'
+  kind?: 'term' | 'sentence',
+  twTraditional?: string
 ): Promise<boolean> {
   const db = await getReadyDatabase();
   const norm = normalizeTerm(originalTerm);
-  if (!norm) return false;
+  const normTw = (twTraditional || '').trim();
+  if (!norm && !normTw) return false;
 
-  let query = `SELECT original_term FROM vocabulary`;
+  let query = `SELECT original_term, tw_traditional, tw_term FROM vocabulary`;
   const params: any[] = [];
   if (kind) {
     query += ` WHERE kind = ?`;
     params.push(kind);
   }
 
-  const rows = await db.getAllAsync<{ original_term: string }>(query, params);
-  return rows.some((r) => normalizeTerm(r.original_term) === norm);
+  const rows = await db.getAllAsync<{ original_term: string; tw_traditional?: string; tw_term?: string }>(query, params);
+  return rows.some((r) => {
+    if (norm && normalizeTerm(r.original_term) === norm) return true;
+    if (normTw && (r.tw_traditional?.trim() === normTw || r.tw_term?.trim() === normTw)) return true;
+    return false;
+  });
 }
 
 // ─── Settings & Cache ──────────────────────────────────────────

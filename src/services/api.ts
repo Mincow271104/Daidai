@@ -2492,7 +2492,7 @@ export async function suggestTerms(
 ): Promise<AITerm[]> {
   const field = getField(fieldKey);
   const promptToUse = customPrompt || field.prompt || field.label;
-  const skip = exclude.slice(0, 40).join(', ');
+  const skip = exclude.slice(0, 80).filter(Boolean).join(', ');
   const r = await callGemini<{ terms: AITerm[] }>(
     [
       {
@@ -2500,7 +2500,7 @@ export async function suggestTerms(
           `Ngành: ${promptToUse}. Đưa ${count} thuật ngữ thông dụng nhất của ngành ` +
           `kèm tiếng Anh chuẩn (original_term), Trung Phồn thể Đài Loan (TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ), ` +
           `pinyin và vi (nghĩa tiếng Việt ngắn).` +
-          `${skip ? ` Bỏ qua: ${skip}.` : ''}`,
+          `${skip ? ` TUYỆT ĐỐI BỎ QUA không đề xuất bất kỳ từ nào sau đây (đã có trong kho hoặc vừa xem): ${skip}.` : ''}`,
       },
     ],
     {
@@ -2508,7 +2508,7 @@ export async function suggestTerms(
       properties: { terms: { type: 'ARRAY', items: TERM_ITEM_SCHEMA } },
       required: ['terms'],
     },
-    800
+    1000
   );
   return r.terms ?? [];
 }

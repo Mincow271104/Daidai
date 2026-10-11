@@ -26,6 +26,8 @@ import {
   addUserCustomField,
   getPinnedFields,
   togglePinField,
+  getAllVocabulary,
+  normalizeTerm,
 } from '../database/repository';
 import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
 import { ensureOnline } from '../services/network';
@@ -37,6 +39,7 @@ export function FieldScreen() {
   const [suggestions, setSuggestions] = useState<AITerm[]>([]);
   const [loading, setLoading] = useState(false);
   const [addedTerms, setAddedTerms] = useState<Set<string>>(new Set());
+  const addedTermsRef = useRef<Set<string>>(new Set());
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
   // Danh sách ngành nghề tùy biến & các ngành đã ghim
@@ -62,7 +65,9 @@ export function FieldScreen() {
   useEffect(() => {
     loadFieldStore();
     loadCustomAndPinned();
-  }, [loadFieldStore, loadCustomAndPinned]);
+    loadVocabulary();
+    loadStats();
+  }, [loadFieldStore, loadCustomAndPinned, loadVocabulary, loadStats]);
 
   // Tổng hợp tất cả ngành (mặc định + người dùng tạo), sắp xếp ngành được ghim lên đầu
   const allFields = useMemo(() => {
@@ -93,15 +98,56 @@ export function FieldScreen() {
     setLoading(true);
     try {
       const fObj = getField(fieldKey, customFields);
-      const excludeList = prevBatchTermsRef.current;
-      // Lấy 10 từ để loại trừ batch trước mà vẫn đảm bảo 8 từ
-      const res = await suggestTerms(fieldKey, excludeList, 10, fObj.prompt || fObj.label);
-      const prevSet = new Set(excludeList.map((w) => w.trim().toLowerCase()));
-      const filtered = res.filter((t) => !prevSet.has(t.original_term.trim().toLowerCase()));
-      const finalTerms = filtered.length > 0 ? filtered.slice(0, 8) : res.slice(0, 8);
+
+      // 1. Lấy toàn bộ từ vựng đã lưu trong kho từ SQLite
+      const savedItems = await getAllVocabulary();
+      const savedNormalizedSet = new Set<string>();
+      for (const v of savedItems) {
+        const normEn = normalizeTerm(v.original_term);
+        if (normEn) savedNormalizedSet.add(normEn);
+        if (v.tw_traditional) savedNormalizedSet.add(v.tw_traditional.trim());
+        if (v.tw_term) savedNormalizedSet.add(v.tw_term.trim());
+      }
+      for (const added of addedTermsRef.current) {
+        savedNormalizedSet.add(added);
+      }
+
+      // 2. Gom danh sách từ cần loại trừ gửi lên AI (cả từ đã lưu và từ đợt liền trước)
+      const excludeWords = Array.from(
+        new Set([
+          ...savedItems.map((v) => v.original_term).filter(Boolean),
+          ...savedItems.map((v) => v.tw_traditional).filter(Boolean),
+          ...prevBatchTermsRef.current,
+        ])
+      );
+
+      // Lấy 14 từ để sau khi lọc loại trừ từ đã lưu & đợt trước vẫn đảm bảo đủ 8 từ mới
+      const res = await suggestTerms(fieldKey, excludeWords, 14, fObj.prompt || fObj.label);
+
+      const prevBatchSet = new Set(prevBatchTermsRef.current.map((w) => normalizeTerm(w)));
+      const prevBatchTwSet = new Set(prevBatchTermsRef.current.map((w) => w.trim()));
+
+      // 3. Lọc triệt để: Từ nào ĐÃ LƯU TRONG KHO hoặc thuộc đợt liền trước (Batch N-1) đều bị loại bỏ
+      const filtered = res.filter((t) => {
+        const normEn = normalizeTerm(t.original_term);
+        const tw = (t.tw_traditional || '').trim();
+
+        // Đã lưu trong kho từ -> Tuyệt đối không xuất hiện
+        if (normEn && savedNormalizedSet.has(normEn)) return false;
+        if (tw && savedNormalizedSet.has(tw)) return false;
+
+        // Trùng đợt liền trước -> Loại bỏ (đợt 3 có thể trùng đợt 1 nhưng không trùng đợt 2)
+        if (normEn && prevBatchSet.has(normEn)) return false;
+        if (tw && prevBatchTwSet.has(tw)) return false;
+
+        return true;
+      });
+
+      const finalTerms = filtered.slice(0, 8);
       setSuggestions(finalTerms);
-      // Cập nhật batch hiện tại để lần nhấn "Lấy từ khác" kế tiếp không trùng với đợt này
-      prevBatchTermsRef.current = finalTerms.map((t) => t.original_term);
+
+      // Cập nhật batch hiện tại để lần nhấn "Lấy từ khác" kế tiếp loại trừ đợt này
+      prevBatchTermsRef.current = finalTerms.flatMap((t) => [t.original_term, t.tw_traditional]);
     } catch (e: any) {
       Alert.alert('Thông báo', e?.message || 'Không thể tải từ gợi ý');
     } finally {
@@ -139,9 +185,19 @@ export function FieldScreen() {
 
   const handleAddTerm = async (term: AITerm) => {
     try {
-      const exists = await termExists(term.original_term);
+      const normEn = normalizeTerm(term.original_term);
+      const tw = (term.tw_traditional || '').trim();
+
+      const exists = await termExists(term.original_term, 'term', term.tw_traditional);
       if (exists) {
-        setAddedTerms((prev) => new Set(prev).add(term.original_term.toLowerCase()));
+        setAddedTerms((prev) => {
+          const next = new Set(prev);
+          if (normEn) next.add(normEn);
+          if (tw) next.add(tw);
+          return next;
+        });
+        if (normEn) addedTermsRef.current.add(normEn);
+        if (tw) addedTermsRef.current.add(tw);
         return;
       }
 
@@ -162,7 +218,15 @@ export function FieldScreen() {
         topic: topicObj.key,
       });
 
-      setAddedTerms((prev) => new Set(prev).add(term.original_term.toLowerCase()));
+      setAddedTerms((prev) => {
+        const next = new Set(prev);
+        if (normEn) next.add(normEn);
+        if (tw) next.add(tw);
+        return next;
+      });
+      if (normEn) addedTermsRef.current.add(normEn);
+      if (tw) addedTermsRef.current.add(tw);
+
       await loadVocabulary();
       await loadStats();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -189,11 +253,24 @@ export function FieldScreen() {
     }
   };
 
-  const isTermAdded = (term: AITerm) => {
-    const key = term.original_term.toLowerCase();
-    if (addedTerms.has(key)) return true;
-    return vocabulary.some((v) => v.original_term.toLowerCase() === key);
-  };
+  const isTermAdded = useCallback(
+    (term: AITerm) => {
+      const normEn = normalizeTerm(term.original_term);
+      const tw = (term.tw_traditional || '').trim();
+
+      if (normEn && addedTerms.has(normEn)) return true;
+      if (tw && addedTerms.has(tw)) return true;
+
+      return vocabulary.some((v) => {
+        const vNormEn = normalizeTerm(v.original_term);
+        const vTw = (v.tw_traditional || v.tw_term || '').trim();
+        if (normEn && vNormEn && normEn === vNormEn) return true;
+        if (tw && vTw && tw === vTw) return true;
+        return false;
+      });
+    },
+    [addedTerms, vocabulary]
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
