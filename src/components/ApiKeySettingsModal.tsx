@@ -450,7 +450,7 @@ export function ApiKeySettingsModal({
                         {/* Thanh năng lượng & Thời gian reset */}
                         <View style={styles.energyPanel}>
                           <View style={styles.energyRow}>
-                            <Text style={styles.energyLabel}>Phút</Text>
+                            <Text style={styles.energyLabel} numberOfLines={1}>Phút</Text>
                             <View style={styles.energyTrack}>
                               <View
                                 style={[
@@ -465,7 +465,7 @@ export function ApiKeySettingsModal({
                           </View>
 
                           <View style={styles.energyRow}>
-                            <Text style={styles.energyLabel}>Ngày</Text>
+                            <Text style={styles.energyLabel} numberOfLines={1}>Ngày</Text>
                             <View style={styles.energyTrack}>
                               <View
                                 style={[
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
-    width: 32,
+    width: 42,
   },
   energyTrack: {
     flex: 1,
