@@ -78,6 +78,8 @@ export function FieldScreen() {
   }, [customFields, pinnedFieldKeys]);
 
   const isLoadingRef = useRef(false);
+  const lastLoadedFieldRef = useRef<string | null>(null);
+  const prevBatchTermsRef = useRef<string[]>([]);
 
   const currentFieldObj = useMemo(() => {
     return getField(field, customFields);
@@ -90,21 +92,29 @@ export function FieldScreen() {
     isLoadingRef.current = true;
     setLoading(true);
     try {
-      const existing = vocabulary.map((v) => v.original_term);
       const fObj = getField(fieldKey, customFields);
-      const res = await suggestTerms(fieldKey, existing, 8, fObj.prompt || fObj.label);
-      setSuggestions(res);
+      const excludeList = prevBatchTermsRef.current;
+      // Lấy 10 từ để loại trừ batch trước mà vẫn đảm bảo 8 từ
+      const res = await suggestTerms(fieldKey, excludeList, 10, fObj.prompt || fObj.label);
+      const prevSet = new Set(excludeList.map((w) => w.trim().toLowerCase()));
+      const filtered = res.filter((t) => !prevSet.has(t.original_term.trim().toLowerCase()));
+      const finalTerms = filtered.length > 0 ? filtered.slice(0, 8) : res.slice(0, 8);
+      setSuggestions(finalTerms);
+      // Cập nhật batch hiện tại để lần nhấn "Lấy từ khác" kế tiếp không trùng với đợt này
+      prevBatchTermsRef.current = finalTerms.map((t) => t.original_term);
     } catch (e: any) {
       Alert.alert('Thông báo', e?.message || 'Không thể tải từ gợi ý');
     } finally {
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, [vocabulary, customFields]);
+  }, [customFields]);
 
-  // Tải gợi ý khi đổi ngành
+  // Tải gợi ý khi đổi ngành (không reload khi lưu từ)
   useEffect(() => {
-    if (field) {
+    if (field && field !== lastLoadedFieldRef.current) {
+      lastLoadedFieldRef.current = field;
+      prevBatchTermsRef.current = [];
       loadSuggestions(field);
     }
   }, [field, loadSuggestions]);

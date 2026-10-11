@@ -124,15 +124,15 @@ export function MoveTopicModal({ visible, item, onClose, onSuccess }: MoveTopicM
 
           {/* Xem trước từ/đoạn đang chuyển */}
           <View style={styles.previewBox}>
-            <Text style={styles.previewTw} numberOfLines={1}>
+            <Text style={styles.previewTw} numberOfLines={2}>
               {item.tw_traditional}
             </Text>
-            <Text style={styles.previewSub} numberOfLines={1}>
+            <Text style={styles.previewSub} numberOfLines={2}>
               {item.vi || item.original_term}
             </Text>
             <View style={styles.currentBadgeRow}>
               <Text style={styles.currentBadgeLabel}>Vị trí hiện tại:</Text>
-              <Text style={styles.currentBadgeValue}>
+              <Text style={styles.currentBadgeValue} numberOfLines={2}>
                 {currentScopeLabel} • {currentTopic?.label || 'Khác'}
               </Text>
             </View>
@@ -186,7 +186,7 @@ export function MoveTopicModal({ visible, item, onClose, onSuccess }: MoveTopicM
               onPress={() => setShowCreateInput(true)}
             >
               <Feather name="plus" size={14} color="#4F46E5" />
-              <Text style={styles.newTopicBtnText}>
+              <Text style={styles.newTopicBtnText} numberOfLines={1}>
                 Tạo chủ đề mới ({targetScope === 'domain' ? 'Chuyên ngành' : 'Giao tiếp'})
               </Text>
             </Pressable>
@@ -255,7 +255,10 @@ export function MoveTopicModal({ visible, item, onClose, onSuccess }: MoveTopicM
                   >
                     <View style={styles.topicItemLeft}>
                       <View style={styles.topicDot} />
-                      <Text style={[styles.topicLabel, isCurrent && styles.topicLabelCurrent]}>
+                      <Text
+                        style={[styles.topicLabel, isCurrent && styles.topicLabelCurrent]}
+                        numberOfLines={2}
+                      >
                         {t.label}
                       </Text>
                     </View>
@@ -344,8 +347,9 @@ const styles = StyleSheet.create({
   },
   currentBadgeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 4,
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
@@ -355,11 +359,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#94A3B8',
     fontWeight: '600',
+    flexShrink: 0,
   },
   currentBadgeValue: {
     fontSize: 11,
     color: '#334155',
     fontWeight: '700',
+    flexShrink: 1,
   },
   scopeTabs: {
     flexDirection: 'row',
@@ -497,17 +503,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flex: 1,
+    minWidth: 0,
+    marginRight: 8,
   },
   topicDot: {
     width: 5,
     height: 5,
     borderRadius: 2.5,
     backgroundColor: '#64748B',
+    flexShrink: 0,
   },
   topicLabel: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
+    flex: 1,
+    flexShrink: 1,
   },
   topicLabelCurrent: {
     color: '#334155',
@@ -517,6 +528,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    flexShrink: 0,
   },
   currentTagText: {
     fontSize: 10,

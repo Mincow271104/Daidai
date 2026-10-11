@@ -231,6 +231,7 @@ export function TopicPickerModal({
                               styles.topicItemText,
                               isSelected && styles.topicItemTextSelected,
                             ]}
+                            numberOfLines={1}
                           >
                             {topic.label}
                           </Text>
@@ -285,6 +286,7 @@ export function TopicPickerModal({
                               styles.topicItemText,
                               isSelected && styles.topicItemTextSelected,
                             ]}
+                            numberOfLines={1}
                           >
                             {topic.label}
                           </Text>
@@ -511,6 +513,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#334155',
+    flexShrink: 1,
   },
   topicItemTextSelected: {
     color: '#1E1B4B',

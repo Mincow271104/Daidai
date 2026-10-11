@@ -286,8 +286,8 @@ export function VocabScreen() {
                 key={top.key}
                 style={[
                   styles.topicChip,
-                  isActive && styles.topicChipActive,
                   !top.is_default && styles.topicChipCustom,
+                  isActive && styles.topicChipActive,
                 ]}
                 onPress={() => {
                   setSelectedTopic(top.key);
