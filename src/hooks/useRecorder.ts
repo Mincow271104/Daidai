@@ -7,7 +7,7 @@ export interface UseRecorderOptions {
   autoStopOnSilence?: boolean; // Mặc định: true (tự dừng sau 1.5s im lặng)
   silenceTimeoutMs?: number; // Mặc định: 1500ms
   silenceThresholdDb?: number; // Ngưỡng âm thanh phát hiện tiếng nói (dB), mặc định: -38 dB
-  onAutoStop?: (result: { uri: string | null; durationMs: number }) => void;
+  onAutoStop?: (result: { uri: string | null; durationMs: number; hasSpoken: boolean }) => void;
 }
 
 export interface RecorderHook {
@@ -15,7 +15,7 @@ export interface RecorderHook {
   duration: number;
   hasSpoken: boolean;
   startRecording: () => Promise<boolean>;
-  stopRecording: () => Promise<{ uri: string | null; durationMs: number }>;
+  stopRecording: () => Promise<{ uri: string | null; durationMs: number; hasSpoken: boolean }>;
   cancelRecording: () => Promise<void>;
 }
 
@@ -64,12 +64,13 @@ export function useRecorder(options?: UseRecorderOptions): RecorderHook {
     };
   }, [clearTimers]);
 
-  const stopRecordingInternal = useCallback(async (): Promise<{ uri: string | null; durationMs: number }> => {
+  const stopRecordingInternal = useCallback(async (): Promise<{ uri: string | null; durationMs: number; hasSpoken: boolean }> => {
     clearTimers();
     try {
       await recorder.stop();
       const uri = recorder.uri;
       const durationMs = Date.now() - startTimeRef.current;
+      const spoken = hasSpokenRef.current;
       setIsRecording(false);
       setDuration(0);
       setHasSpoken(false);
@@ -87,7 +88,7 @@ export function useRecorder(options?: UseRecorderOptions): RecorderHook {
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      return { uri, durationMs };
+      return { uri, durationMs, hasSpoken: spoken };
     } catch (err) {
       console.error('Recorder stop error:', err);
       setIsRecording(false);
@@ -103,7 +104,7 @@ export function useRecorder(options?: UseRecorderOptions): RecorderHook {
       } catch {
         // bỏ qua
       }
-      return { uri: null, durationMs: 0 };
+      return { uri: null, durationMs: 0, hasSpoken: false };
     }
   }, [clearTimers, recorder]);
 
@@ -205,8 +206,8 @@ export function useRecorder(options?: UseRecorderOptions): RecorderHook {
     stopRecordingInternal,
   ]);
 
-  const stopRecording = useCallback(async (): Promise<{ uri: string | null; durationMs: number }> => {
-    if (!isRecording || isStoppingRef.current) return { uri: null, durationMs: 0 };
+  const stopRecording = useCallback(async (): Promise<{ uri: string | null; durationMs: number; hasSpoken: boolean }> => {
+    if (!isRecording || isStoppingRef.current) return { uri: null, durationMs: 0, hasSpoken: false };
     isStoppingRef.current = true;
     return await stopRecordingInternal();
   }, [isRecording, stopRecordingInternal]);

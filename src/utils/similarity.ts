@@ -190,6 +190,20 @@ export function evaluatePronunciationRadar(
     };
   }
 
+  // Khi người dùng không nói gì hoặc không thu được âm thanh -> 0 điểm tuyệt đối, toàn bộ báo lỗi đỏ
+  if (!cleanedActual) {
+    return {
+      score: 0.0,
+      percentage: 0,
+      label: 'Cần luyện thêm',
+      chars: cleanedTarget.split('').map((char, i) => ({
+        char,
+        pinyin: pinyinList[i] || '',
+        status: 'error',
+      })),
+    };
+  }
+
   const actualChars = cleanedActual.split('');
   let actualIdx = 0;
   const radarChars: RadarChar[] = [];

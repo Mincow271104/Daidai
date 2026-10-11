@@ -3,7 +3,11 @@ import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-nati
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRecorder } from '../hooks/useRecorder';
-import { transcribeSpeech } from '../services/api';
+import {
+  transcribeSpeech,
+  evaluatePronunciation,
+  PronunciationEvaluationResult,
+} from '../services/api';
 import {
   calculateSimilarity,
   SimilarityResult,
@@ -25,6 +29,7 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
   const [result, setResult] = useState<SimilarityResult | null>(null);
   const [radarResult, setRadarResult] = useState<PronunciationRadarResult | null>(null);
   const [spokenText, setSpokenText] = useState<string>('');
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [transcribeSource, setTranscribeSource] = useState<'local' | 'gemini' | null>(null);
 
@@ -37,27 +42,158 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
     speakChinese(targetSentence);
   };
 
-  const evaluateAudio = useCallback(async (uri: string) => {
-    setIsProcessing(true);
-    try {
-      const res = await transcribeSpeech(uri, 'zh', undefined, targetSentence);
+  const evaluateAudio = useCallback(async (uri: string, hasSpokenHint?: boolean) => {
+    // 1. Kiểm tra phát hiện giọng nói từ microphone VAD metering
+    // Nếu mic không ghi nhận âm thanh nào đạt ngưỡng nói (im lặng) -> Báo lỗi 0% ngay lập tức
+    if (hasSpokenHint === false) {
+      setIsProcessing(false);
+      setErrorMessage('Không nhận diện được giọng nói. Bạn chưa phát âm hoặc đọc quá nhỏ, hãy thử lại nhé!');
+      setSpokenText('');
+      setFeedback(null);
+      setResult({
+        score: 0,
+        percentage: 0,
+        label: 'Thử lại',
+        diffChars: targetSentence.split('').map((char) => ({ char, match: false })),
+        cleanedTarget: targetSentence,
+        cleanedActual: '',
+      });
+      setRadarResult({
+        score: 0,
+        percentage: 0,
+        label: 'Cần luyện thêm',
+        chars: previewChars.map((item) => ({
+          char: item.char,
+          pinyin: item.pinyin,
+          status: 'error',
+        })),
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
 
-      if (!res || !res.text) {
-        setErrorMessage('Không nhận diện được giọng nói. Hãy đọc to, rõ hơn và thử lại nhé!');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      } else {
-        setTranscribeSource(res.source);
-        setSpokenText(res.text);
-        const sim = calculateSimilarity(targetSentence, res.text);
-        const radar = evaluatePronunciationRadar(targetSentence, res.text, targetPinyin);
-        setResult(sim);
-        setRadarResult(radar);
-        if (radar.score >= 0.85) {
+    setIsProcessing(true);
+    setErrorMessage(null);
+    setFeedback(null);
+
+    try {
+      let evalRes: PronunciationEvaluationResult | null = null;
+
+      // 2. Ưu tiên: Đánh giá khảo thí ngữ âm trực tiếp bằng Gemini Multimodal Examiner
+      // Nghiêm ngặt: Bắt lỗi im lặng, đọc sai âm tiết, lệch thanh điệu và trừ điểm theo từng chữ
+      try {
+        evalRes = await evaluatePronunciation(uri, targetSentence, targetPinyin);
+      } catch (evalErr: any) {
+        console.warn('[SpeakPractice] AI Examiner call failed, falling back to transcription:', evalErr);
+      }
+
+      if (evalRes) {
+        if (!evalRes.hasSpeech || evalRes.score === 0) {
+          setErrorMessage(evalRes.feedback || 'Không phát hiện giọng đọc. Bạn hãy nói to và rõ hơn nhé!');
+          setSpokenText(evalRes.transcribedText || '');
+          setFeedback(evalRes.feedback || null);
+          setTranscribeSource('gemini');
+          setResult({
+            score: 0,
+            percentage: 0,
+            label: 'Thử lại',
+            diffChars: targetSentence.split('').map((char) => ({ char, match: false })),
+            cleanedTarget: targetSentence,
+            cleanedActual: '',
+          });
+          setRadarResult({
+            score: 0,
+            percentage: 0,
+            label: 'Cần luyện thêm',
+            chars: evalRes.chars.map((c) => ({
+              char: c.char,
+              pinyin: c.target_pinyin,
+              status: 'error',
+            })),
+          });
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          return;
+        }
+
+        // Người dùng có phát âm và AI examiner đã chấm điểm chi tiết
+        setTranscribeSource('gemini');
+        setSpokenText(evalRes.transcribedText);
+        setFeedback(evalRes.feedback || null);
+
+        const scoreFrac = evalRes.score / 100;
+        const label: 'Chuẩn' | 'Gần đúng' | 'Thử lại' =
+          evalRes.score >= 85 ? 'Chuẩn' : evalRes.score >= 60 ? 'Gần đúng' : 'Thử lại';
+
+        setResult({
+          score: scoreFrac,
+          percentage: evalRes.score,
+          label,
+          diffChars: evalRes.chars.map((c) => ({
+            char: c.char,
+            match: c.status === 'correct',
+          })),
+          cleanedTarget: targetSentence,
+          cleanedActual: evalRes.transcribedText,
+        });
+
+        setRadarResult({
+          score: scoreFrac,
+          percentage: evalRes.score,
+          label: evalRes.accuracyLevel,
+          chars: evalRes.chars.map((c) => ({
+            char: c.char,
+            pinyin: c.target_pinyin,
+            status: c.status,
+          })),
+        });
+
+        if (evalRes.score >= 85) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } else if (radar.score >= 0.6) {
+        } else if (evalRes.score >= 60) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         } else {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+      } else {
+        // 3. Fallback: Nếu không gọi được Gemini Examiner, nhận diện văn bản thuần túy (không prompt bias)
+        const res = await transcribeSpeech(uri, 'zh');
+
+        if (!res || !res.text || !res.text.trim()) {
+          setErrorMessage('Không nhận diện được giọng nói. Hãy đọc to, rõ hơn và thử lại nhé!');
+          setSpokenText('');
+          setResult({
+            score: 0,
+            percentage: 0,
+            label: 'Thử lại',
+            diffChars: targetSentence.split('').map((char) => ({ char, match: false })),
+            cleanedTarget: targetSentence,
+            cleanedActual: '',
+          });
+          setRadarResult({
+            score: 0,
+            percentage: 0,
+            label: 'Cần luyện thêm',
+            chars: previewChars.map((item) => ({
+              char: item.char,
+              pinyin: item.pinyin,
+              status: 'error',
+            })),
+          });
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        } else {
+          setTranscribeSource(res.source);
+          setSpokenText(res.text);
+          const sim = calculateSimilarity(targetSentence, res.text);
+          const radar = evaluatePronunciationRadar(targetSentence, res.text, targetPinyin);
+          setResult(sim);
+          setRadarResult(radar);
+          if (radar.score >= 0.85) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          } else if (radar.score >= 0.6) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          } else {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          }
         }
       }
     } catch (e: any) {
@@ -66,14 +202,14 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
     } finally {
       setIsProcessing(false);
     }
-  }, [targetSentence, targetPinyin]);
+  }, [targetSentence, targetPinyin, previewChars]);
 
   const { isRecording, duration, startRecording, stopRecording, cancelRecording } = useRecorder({
     autoStopOnSilence: true,
     silenceTimeoutMs: 1500,
-    onAutoStop: ({ uri, durationMs }) => {
+    onAutoStop: ({ uri, durationMs, hasSpoken }) => {
       if (uri && durationMs >= 500) {
-        evaluateAudio(uri);
+        evaluateAudio(uri, hasSpoken);
       }
     },
   });
@@ -86,12 +222,13 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
       setResult(null);
       setRadarResult(null); // Luôn reset kết quả radar cũ khi bắt đầu đọc mới
       setSpokenText('');
+      setFeedback(null);
       setTranscribeSource(null);
       await startRecording();
     } else {
-      const { uri, durationMs } = await stopRecording();
+      const { uri, durationMs, hasSpoken } = await stopRecording();
       if (uri && durationMs >= 500) {
-        await evaluateAudio(uri);
+        await evaluateAudio(uri, hasSpoken);
       }
     }
   }, [isProcessing, isRecording, startRecording, stopRecording, evaluateAudio]);
@@ -101,6 +238,7 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
     setErrorMessage(null);
     setRadarResult(null);
     setResult(null);
+    setFeedback(null);
   }, [cancelRecording]);
 
   return (
@@ -281,8 +419,14 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
           </View>
 
           <Text style={styles.spokenLabel}>
-            Máy nghe được: <Text style={styles.spokenText}>"{spokenText}"</Text>
+            Máy nghe được: <Text style={styles.spokenText}>"{spokenText || '(Không phát hiện)'}"</Text>
           </Text>
+          {feedback ? (
+            <View style={styles.feedbackRow}>
+              <Feather name="message-circle" size={12} color="#6366F1" />
+              <Text style={styles.feedbackText}>{feedback}</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -595,6 +739,22 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     fontStyle: 'italic',
     fontWeight: '700',
+  },
+  feedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  feedbackText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#4F46E5',
+    lineHeight: 16,
+    fontWeight: '500',
   },
   errorBox: {
     flexDirection: 'row',
