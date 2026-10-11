@@ -147,7 +147,7 @@ export function MoveTopicModal({ visible, item, onClose, onSuccess }: MoveTopicM
               <Feather
                 name="message-circle"
                 size={14}
-                color={targetScope === 'communication' ? '#0F172A' : '#64748B'}
+                color={targetScope === 'communication' ? '#6366F1' : '#64748B'}
               />
               <Text
                 style={[
@@ -166,7 +166,7 @@ export function MoveTopicModal({ visible, item, onClose, onSuccess }: MoveTopicM
               <Feather
                 name="briefcase"
                 size={14}
-                color={targetScope === 'domain' ? '#0F172A' : '#64748B'}
+                color={targetScope === 'domain' ? '#6366F1' : '#64748B'}
               />
               <Text
                 style={[
@@ -185,7 +185,7 @@ export function MoveTopicModal({ visible, item, onClose, onSuccess }: MoveTopicM
               style={styles.newTopicBtn}
               onPress={() => setShowCreateInput(true)}
             >
-              <Feather name="plus" size={14} color="#0F172A" />
+              <Feather name="plus" size={14} color="#4F46E5" />
               <Text style={styles.newTopicBtnText}>
                 Tạo chủ đề mới ({targetScope === 'domain' ? 'Chuyên ngành' : 'Giao tiếp'})
               </Text>
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   scopeTabTextActive: {
-    color: '#0F172A',
+    color: '#6366F1',
     fontWeight: '800',
   },
   newTopicBtn: {
@@ -401,15 +401,15 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: '#C7D2FE',
     marginBottom: 12,
   },
   newTopicBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#4F46E5',
   },
   createInputBox: {
     flexDirection: 'row',
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
   createConfirmBtn: {
     width: 38,
     height: 38,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#6366F1',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',

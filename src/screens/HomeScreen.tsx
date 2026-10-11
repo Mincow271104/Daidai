@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
   Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
@@ -218,11 +218,15 @@ export function HomeScreen() {
     }
   }, [showPasteInput]);
 
+  const isProcessingRef = useRef(false);
+
   const handlePasteSubmit = useCallback(async () => {
+    if (isProcessingRef.current) return;
     const text = pasteText.trim();
     if (!text) return;
     const online = await ensureOnline('Phân tích câu');
     if (!online) return;
+    isProcessingRef.current = true;
     setIsProcessing(true);
     setNewlyAdded([]);
     setPendingItems(null);
@@ -251,6 +255,7 @@ export function HomeScreen() {
       }
     } finally {
       setIsProcessing(false);
+      isProcessingRef.current = false;
     }
   }, [pasteText, field, setMascotState]);
 
@@ -400,7 +405,11 @@ export function HomeScreen() {
                 onPress={handlePasteSubmit}
                 disabled={!pasteText.trim() || isProcessing}
               >
-                <Text style={styles.pasteSubmitText}>Phân tích</Text>
+                {isProcessing ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.pasteSubmitText}>Phân tích</Text>
+                )}
               </Pressable>
             </View>
           )}

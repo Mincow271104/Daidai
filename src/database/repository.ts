@@ -1254,8 +1254,9 @@ export async function createUserTopic(
     return existingTopic;
   }
 
+  const prefix = scope === 'domain' ? 'ud_' : 'u_';
   const normKey = normalizeSearchText(cleanLabel).replace(/[^a-z0-9]/g, '_').slice(0, 20);
-  const key = normKey.length > 0 ? `u_${normKey}_${Date.now().toString(36)}` : `topic_${Date.now().toString(36)}`;
+  const key = normKey.length > 0 ? `${prefix}${normKey}_${Date.now().toString(36)}` : `${prefix}topic_${Date.now().toString(36)}`;
   const id = uuidv4();
   const now = Date.now();
 
@@ -1283,11 +1284,12 @@ export async function ensureFieldTopic(fieldKey: string, fieldLabel: string): Pr
   const db = await getReadyDatabase();
   const cleanKey = fieldKey.trim().toLowerCase();
   const cleanLabel = fieldLabel.trim();
+  const domainTopicKey = cleanKey.startsWith('d_') ? cleanKey : `d_${cleanKey}`;
 
-  // Kiểm tra đã có chủ đề theo key hoặc theo tên trong domain chưa
+  // Kiểm tra đã có chủ đề theo key (mới hoặc cũ) hoặc theo tên trong domain chưa
   const existing = await db.getFirstAsync<any>(
-    `SELECT * FROM user_topics WHERE (LOWER(key) = LOWER(?) OR LOWER(label) = LOWER(?)) AND scope = 'domain';`,
-    [cleanKey, cleanLabel]
+    `SELECT * FROM user_topics WHERE (LOWER(key) = LOWER(?) OR LOWER(key) = LOWER(?) OR LOWER(label) = LOWER(?)) AND scope = 'domain';`,
+    [domainTopicKey, cleanKey, cleanLabel]
   );
 
   if (existing) {
@@ -1308,12 +1310,12 @@ export async function ensureFieldTopic(fieldKey: string, fieldLabel: string): Pr
   await db.runAsync(
     `INSERT INTO user_topics (id, key, label, icon, is_default, created_at, scope)
      VALUES (?, ?, ?, null, 0, ?, 'domain');`,
-    [id, cleanKey, cleanLabel, now]
+    [id, domainTopicKey, cleanLabel, now]
   );
 
   const newTopic: Topic = {
     id,
-    key: cleanKey,
+    key: domainTopicKey,
     label: cleanLabel,
     is_default: false,
     scope: 'domain',

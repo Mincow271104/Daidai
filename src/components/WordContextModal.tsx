@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -78,8 +78,11 @@ export function WordContextModal({
     }
   }, [visible, word, fullSentence, fieldKey]);
 
+  const isDeepAnalyzingRef = useRef(false);
+
   const handleDeepAnalyzeAI = async () => {
-    if (!word) return;
+    if (!word || isDeepAnalyzingRef.current) return;
+    isDeepAnalyzingRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
@@ -101,6 +104,7 @@ export function WordContextModal({
       setError(err?.message || 'Không thể kết nối AI để phân tích sâu.');
     } finally {
       setIsLoading(false);
+      isDeepAnalyzingRef.current = false;
     }
   };
 
@@ -188,12 +192,19 @@ export function WordContextModal({
 
                   {data.is_local ? (
                     <Pressable
-                      style={styles.deepAiBtn}
+                      style={[styles.deepAiBtn, isLoading && styles.btnDisabled]}
                       onPress={handleDeepAnalyzeAI}
+                      disabled={isLoading}
                       hitSlop={6}
                     >
-                      <Feather name="zap" size={11} color="#6366F1" />
-                      <Text style={styles.deepAiBtnText}>Phân tích sâu với AI</Text>
+                      {isLoading ? (
+                        <ActivityIndicator size="small" color="#6366F1" />
+                      ) : (
+                        <Feather name="zap" size={11} color="#6366F1" />
+                      )}
+                      <Text style={styles.deepAiBtnText}>
+                        {isLoading ? 'Đang phân tích...' : 'Phân tích sâu với AI'}
+                      </Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -656,5 +667,8 @@ const styles = StyleSheet.create({
   },
   saveBtnTextSaved: {
     color: '#047857',
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
 });

@@ -237,6 +237,14 @@ async function doInitDatabase(): Promise<void> {
     }
     // Đảm bảo tất cả chủ đề mặc định luôn có scope là communication
     await database.runAsync(`UPDATE user_topics SET scope = 'communication' WHERE is_default = 1;`);
+
+    // Migration an toàn cho các chủ đề chuyên ngành: thêm tiền tố d_ để không đụng độ key với tab giao tiếp
+    await database.runAsync(
+      `UPDATE user_topics SET key = 'd_' || key WHERE scope = 'domain' AND key NOT LIKE 'd_%' AND key NOT LIKE 'ud_%';`
+    );
+    await database.runAsync(
+      `UPDATE vocabulary SET topic = 'd_' || topic WHERE scope = 'domain' AND topic NOT LIKE 'd_%' AND topic NOT LIKE 'ud_%' AND topic != 'other' AND topic IS NOT NULL;`
+    );
   } catch (err) {
     console.warn('Migration user_topics error:', err);
   }

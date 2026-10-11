@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -77,13 +77,17 @@ export function FieldScreen() {
     });
   }, [customFields, pinnedFieldKeys]);
 
+  const isLoadingRef = useRef(false);
+
   const currentFieldObj = useMemo(() => {
     return getField(field, customFields);
   }, [field, customFields]);
 
   const loadSuggestions = useCallback(async (fieldKey: string) => {
+    if (isLoadingRef.current) return;
     const online = await ensureOnline('Gợi ý thuật ngữ');
     if (!online) return;
+    isLoadingRef.current = true;
     setLoading(true);
     try {
       const existing = vocabulary.map((v) => v.original_term);
@@ -94,6 +98,7 @@ export function FieldScreen() {
       Alert.alert('Thông báo', e?.message || 'Không thể tải từ gợi ý');
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   }, [vocabulary, customFields]);
 
@@ -131,7 +136,7 @@ export function FieldScreen() {
       }
 
       // Tự động tạo chủ đề Chuyên ngành bên Kho từ theo tên ngành hiện tại
-      await ensureFieldTopic(field, currentFieldObj.label);
+      const topicObj = await ensureFieldTopic(field, currentFieldObj.label);
 
       await insertVocabulary({
         original_term: term.original_term,
@@ -144,7 +149,7 @@ export function FieldScreen() {
         source: 'suggestion',
         scope: 'domain',
         kind: 'term',
-        topic: field,
+        topic: topicObj.key,
       });
 
       setAddedTerms((prev) => new Set(prev).add(term.original_term.toLowerCase()));
@@ -212,7 +217,7 @@ export function FieldScreen() {
               setShowAddFieldModal(true);
             }}
           >
-            <Feather name="plus" size={13} color="#0F172A" />
+            <Feather name="plus" size={13} color="#4F46E5" />
             <Text style={styles.addSectorChipText}>Thêm ngành</Text>
           </Pressable>
 
@@ -261,14 +266,18 @@ export function FieldScreen() {
           disabled={loading}
           hitSlop={6}
         >
-          <Feather name="refresh-cw" size={12} color="#0F172A" />
-          <Text style={styles.refreshText}>Lấy từ khác</Text>
+          {loading ? (
+            <ActivityIndicator size="small" color="#6366F1" />
+          ) : (
+            <Feather name="refresh-cw" size={12} color="#6366F1" />
+          )}
+          <Text style={styles.refreshText}>{loading ? 'Đang tải...' : 'Lấy từ khác'}</Text>
         </Pressable>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#0F172A" size="large" />
+          <ActivityIndicator color="#6366F1" size="large" />
           <Text style={styles.loadingText}>Đang tìm thuật ngữ tiêu biểu...</Text>
         </View>
       ) : (
@@ -296,7 +305,7 @@ export function FieldScreen() {
                   <Feather
                     name={added ? 'check' : 'plus'}
                     size={14}
-                    color={added ? '#475569' : '#FFFFFF'}
+                    color={added ? '#059669' : '#FFFFFF'}
                   />
                   <Text style={[styles.addBtnText, added && styles.addBtnTextDisabled]}>
                     {added ? 'Đã lưu' : 'Lưu từ'}
@@ -416,12 +425,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: '#C7D2FE',
   },
   addSectorChipText: {
-    color: '#0F172A',
+    color: '#4F46E5',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -437,8 +446,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   chipActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
   },
   starBtn: {
     padding: 2,
@@ -487,12 +496,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C7D2FE',
   },
   refreshText: {
-    color: '#0F172A',
+    color: '#6366F1',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -528,7 +537,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   termPinyin: {
-    color: '#475569',
+    color: '#6366F1',
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
@@ -543,15 +552,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#6366F1',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
   },
   addBtnDisabled: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#ECFDF5',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#A7F3D0',
   },
   addBtnText: {
     color: '#FFFFFF',
@@ -559,7 +568,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   addBtnTextDisabled: {
-    color: '#475569',
+    color: '#059669',
   },
   center: {
     flex: 1,
@@ -644,7 +653,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 8,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#6366F1',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -198,7 +198,7 @@ export function VocabScreen() {
           <Feather
             name="message-circle"
             size={16}
-            color={activeTab === 'communication' ? '#0F172A' : '#64748B'}
+            color={activeTab === 'communication' ? '#6366F1' : '#64748B'}
           />
           <Text style={[styles.topTabText, activeTab === 'communication' && styles.topTabTextActive]}>
             Giao tiếp
@@ -212,7 +212,7 @@ export function VocabScreen() {
           <Feather
             name="briefcase"
             size={16}
-            color={activeTab === 'domain' ? '#0F172A' : '#64748B'}
+            color={activeTab === 'domain' ? '#6366F1' : '#64748B'}
           />
           <Text style={[styles.topTabText, activeTab === 'domain' && styles.topTabTextActive]}>
             Chuyên ngành
@@ -233,14 +233,14 @@ export function VocabScreen() {
           style={[styles.statBox, filter === 'mastered' && styles.statBoxActive]}
           onPress={() => setFilter('mastered')}
         >
-          <Text style={[styles.statNumber, { color: '#0F172A' }]}>{stats.mastered}</Text>
+          <Text style={[styles.statNumber, { color: '#059669' }]}>{stats.mastered}</Text>
           <Text style={styles.statLabel}>Đã thuộc</Text>
         </Pressable>
         <Pressable
           style={[styles.statBox, filter === 'due' && styles.statBoxActive]}
           onPress={() => setFilter('due')}
         >
-          <Text style={[styles.statNumber, { color: '#475569' }]}>{stats.due}</Text>
+          <Text style={[styles.statNumber, { color: '#D97706' }]}>{stats.due}</Text>
           <Text style={styles.statLabel}>Cần ôn</Text>
         </Pressable>
       </View>
@@ -260,7 +260,7 @@ export function VocabScreen() {
               setShowTopicManageModal(true);
             }}
           >
-            <Feather name="plus" size={13} color="#0F172A" />
+            <Feather name="plus" size={13} color="#4F46E5" />
             <Text style={styles.createTopicChipText}>Tạo chủ đề</Text>
           </Pressable>
 
@@ -443,15 +443,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   totalBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#EEF2FF',
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C7D2FE',
   },
   totalBadgeText: {
-    color: '#0F172A',
+    color: '#4F46E5',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   topTabTextActive: {
-    color: '#0F172A',
+    color: '#6366F1',
     fontWeight: '800',
   },
   statsRow: {
@@ -506,8 +506,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   statBoxActive: {
-    borderColor: '#0F172A',
-    backgroundColor: '#F8FAFC',
+    borderColor: '#6366F1',
+    backgroundColor: '#EEF2FF',
   },
   statNumber: { color: '#0F172A', fontSize: 18, fontWeight: '800' },
   statLabel: { color: '#64748B', fontSize: 11, marginTop: 2, textAlign: 'center', fontWeight: '600' },
@@ -525,12 +525,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#EEF2FF',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: '#C7D2FE',
   },
   createTopicChipText: {
-    color: '#0F172A',
+    color: '#4F46E5',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -546,8 +546,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   topicChipActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
   },
   topicChipCustom: {
     borderColor: '#CBD5E1',
@@ -606,10 +606,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   dotMastered: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#10B981',
   },
   dotDue: {
-    backgroundColor: '#94A3B8',
+    backgroundColor: '#F59E0B',
   },
   statusText: {
     color: '#64748B',
@@ -626,6 +626,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   iconBtnFavorited: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FEF3C7',
   },
 });

@@ -49,6 +49,8 @@ export function DialogueModal({ visible, onClose, onSaveSentence }: DialogueModa
   const [customPromptInput, setCustomPromptInput] = useState('');
   const [customRoleInput, setCustomRoleInput] = useState('');
   const [isGeneratingCustom, setIsGeneratingCustom] = useState(false);
+  const [loadingScenarioId, setLoadingScenarioId] = useState<string | null>(null);
+  const isGeneratingRef = useRef(false);
 
   // Danh sách toàn bộ các lượt của kịch bản hiện tại (Tối ưu 1: Single-call / Prebaked)
   const [allTurns, setAllTurns] = useState<DialogueTurn[]>([]);
@@ -84,6 +86,8 @@ export function DialogueModal({ visible, onClose, onSaveSentence }: DialogueModa
       setShowCreateCustom(false);
       setCustomPromptInput('');
       setCustomRoleInput('');
+      setLoadingScenarioId(null);
+      isGeneratingRef.current = false;
       loadCustomList();
     }
   }, [visible, loadCustomList]);
@@ -91,40 +95,50 @@ export function DialogueModal({ visible, onClose, onSaveSentence }: DialogueModa
   // ─── Bắt đầu kịch bản có sẵn (Tối ưu 3: 0 Token Gemini) ──────────
 
   const startScenario = async (scenario: Scenario) => {
+    if (isGeneratingRef.current) return;
+    isGeneratingRef.current = true;
+    setLoadingScenarioId(scenario.id);
     Haptics.selectionAsync();
-    setActiveScenario(scenario);
-    setHistory([]);
-    setRecapSentences([]);
-    setSelectedOptionIndex(null);
 
-    if (scenario.prebaked_turns && scenario.prebaked_turns.length > 0) {
-      // Dùng ngay bộ kịch bản mẫu không tốn API
-      setAllTurns(scenario.prebaked_turns);
-      setCurrentTurn(scenario.prebaked_turns[0]);
-      setTurnIndex(1);
-      setStage('in_dialogue');
-      speakChinese(scenario.prebaked_turns[0].character_tw);
-    } else {
-      // Nếu chưa có prebaked turns, gọi sinh trọn gói 1 lần duy nhất
-      setIsGeneratingCustom(true);
-      try {
+    try {
+      if (scenario.prebaked_turns && scenario.prebaked_turns.length > 0) {
+        // Dùng ngay bộ kịch bản mẫu không tốn API
+        setActiveScenario(scenario);
+        setHistory([]);
+        setRecapSentences([]);
+        setSelectedOptionIndex(null);
+        setAllTurns(scenario.prebaked_turns);
+        setCurrentTurn(scenario.prebaked_turns[0]);
+        setTurnIndex(1);
+        setStage('in_dialogue');
+        speakChinese(scenario.prebaked_turns[0].character_tw);
+      } else {
+        // Nếu chưa có prebaked turns, gọi sinh trọn gói 1 lần duy nhất
+        setIsGeneratingCustom(true);
         const turns = await generateFullDialogueScenario(scenario.prompt, scenario.topic);
+        setActiveScenario(scenario);
+        setHistory([]);
+        setRecapSentences([]);
+        setSelectedOptionIndex(null);
         setAllTurns(turns);
         setCurrentTurn(turns[0]);
         setTurnIndex(1);
         setStage('in_dialogue');
         speakChinese(turns[0].character_tw);
-      } catch (e: any) {
-        Alert.alert('Lỗi', e.message || 'Không thể tạo kịch bản');
-      } finally {
-        setIsGeneratingCustom(false);
       }
+    } catch (e: any) {
+      Alert.alert('Lỗi', e.message || 'Không thể tạo kịch bản');
+    } finally {
+      setIsGeneratingCustom(false);
+      setLoadingScenarioId(null);
+      isGeneratingRef.current = false;
     }
   };
 
   // ─── Bắt đầu kịch bản tự tạo đã lưu ──────────────────────────────
 
   const startSavedCustomScenario = (cs: CustomScenario) => {
+    if (isGeneratingRef.current) return;
     Haptics.selectionAsync();
     setActiveScenario(cs);
     setAllTurns(cs.turns);
@@ -144,6 +158,7 @@ export function DialogueModal({ visible, onClose, onSaveSentence }: DialogueModa
   // ─── Tạo mới kịch bản cá nhân hóa (Tối ưu 1: Đúng 1 API call) ────
 
   const handleCreateCustomScenario = async () => {
+    if (isGeneratingRef.current) return;
     const prompt = customPromptInput.trim();
     if (!prompt) {
       Alert.alert('Thông báo', 'Vui lòng nhập tình huống bạn muốn luyện tập.');
@@ -151,7 +166,7 @@ export function DialogueModal({ visible, onClose, onSaveSentence }: DialogueModa
     }
 
     const role = customRoleInput.trim();
-
+    isGeneratingRef.current = true;
     setIsGeneratingCustom(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -183,6 +198,7 @@ export function DialogueModal({ visible, onClose, onSaveSentence }: DialogueModa
       Alert.alert('Lỗi', e.message || 'Không thể tạo kịch bản.');
     } finally {
       setIsGeneratingCustom(false);
+      isGeneratingRef.current = false;
     }
   };
 
@@ -385,8 +401,9 @@ export function DialogueModal({ visible, onClose, onSaveSentence }: DialogueModa
                         </View>
                         <Text style={styles.scenarioDesc}>{cs.prompt}</Text>
                         <Pressable
-                          style={styles.scenarioFooter}
+                          style={[styles.scenarioFooter, (loadingScenarioId !== null || isGeneratingCustom) && styles.scenarioCardDisabled]}
                           onPress={() => startSavedCustomScenario(cs)}
+                          disabled={loadingScenarioId !== null || isGeneratingCustom}
                         >
                           <Text style={styles.scenarioStartText}>Luyện lại (0 API) →</Text>
                         </Pressable>
@@ -399,26 +416,39 @@ export function DialogueModal({ visible, onClose, onSaveSentence }: DialogueModa
               {/* Danh sách kịch bản có sẵn */}
               <Text style={styles.sectionSubtitle}>BỐI CẢNH GIAO TIẾP PHỔ BIẾN:</Text>
               <View style={styles.scenariosGrid}>
-                {SCENARIOS.map((sc) => (
-                  <Pressable
-                    key={sc.id}
-                    style={styles.scenarioCard}
-                    onPress={() => startScenario(sc)}
-                  >
-                    <View style={styles.scenarioCardTop}>
-                      <Text style={styles.scenarioTitle}>{sc.title}</Text>
-                      {sc.prebaked_turns && (
-                        <View style={styles.zeroQuotaBadge}>
-                          <Text style={styles.zeroQuotaBadgeText}>Sẵn sàng</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.scenarioDesc}>{sc.prompt}</Text>
-                    <View style={styles.scenarioFooter}>
-                      <Text style={styles.scenarioStartText}>Bắt đầu →</Text>
-                    </View>
-                  </Pressable>
-                ))}
+                {SCENARIOS.map((sc) => {
+                  const isLoadingThis = loadingScenarioId === sc.id;
+                  const isBlocked = loadingScenarioId !== null || isGeneratingCustom;
+
+                  return (
+                    <Pressable
+                      key={sc.id}
+                      style={[styles.scenarioCard, isBlocked && !isLoadingThis && styles.scenarioCardDisabled]}
+                      onPress={() => startScenario(sc)}
+                      disabled={isBlocked}
+                    >
+                      <View style={styles.scenarioCardTop}>
+                        <Text style={styles.scenarioTitle}>{sc.title}</Text>
+                        {sc.prebaked_turns && (
+                          <View style={styles.zeroQuotaBadge}>
+                            <Text style={styles.zeroQuotaBadgeText}>Sẵn sàng</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.scenarioDesc}>{sc.prompt}</Text>
+                      <View style={styles.scenarioFooter}>
+                        {isLoadingThis ? (
+                          <View style={styles.scenarioLoadingRow}>
+                            <ActivityIndicator size="small" color="#6366F1" />
+                            <Text style={styles.scenarioLoadingText}>Đang chuẩn bị...</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.scenarioStartText}>Bắt đầu →</Text>
+                        )}
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </View>
             </ScrollView>
           )}
@@ -764,6 +794,19 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     fontSize: 13,
     fontWeight: '800',
+  },
+  scenarioLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  scenarioLoadingText: {
+    color: '#6366F1',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  scenarioCardDisabled: {
+    opacity: 0.5,
   },
   dialogueContainer: {
     minHeight: 400,
