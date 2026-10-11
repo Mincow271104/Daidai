@@ -269,6 +269,39 @@ export async function syncAllSmartNotifications(): Promise<void> {
   }
 }
 
+// ─── 6. Cảnh báo Hạn mức Quota API Key Sắp Hết ─────────────────────
+
+export async function sendQuotaWarningNotification(
+  title: string,
+  body: string
+): Promise<void> {
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('quota-warnings', {
+        name: 'Hạn mức API Key',
+        importance: Notifications.AndroidImportance.HIGH,
+        sound: 'default',
+        vibrationPattern: [0, 250, 250, 250],
+      }).catch(() => {});
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+        data: { type: 'quota_warning' },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 1,
+      },
+    });
+  } catch (err) {
+    console.warn('sendQuotaWarningNotification error:', err);
+  }
+}
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -278,3 +311,4 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
+

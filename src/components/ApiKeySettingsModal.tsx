@@ -24,7 +24,13 @@ import {
   setNotificationSettings,
   NotificationSettings,
 } from '../database/repository';
-import { setCustomUserKeys, getGeminiKeys, testGeminiApiKey } from '../services/api';
+import {
+  setCustomUserKeys,
+  getGeminiKeys,
+  testGeminiApiKey,
+  getKeyQuotaInfo,
+  KeyQuotaInfo,
+} from '../services/api';
 import { syncAllSmartNotifications } from '../services/notifications';
 import { ensureOnline } from '../services/network';
 
@@ -52,12 +58,30 @@ export function ApiKeySettingsModal({
   const [keyValidationMap, setKeyValidationMap] = useState<
     Record<string, { status: 'idle' | 'testing' | 'valid' | 'invalid'; message?: string }>
   >({});
+  const [quotaMap, setQuotaMap] = useState<Record<string, KeyQuotaInfo>>({});
 
   useEffect(() => {
     if (visible) {
       loadSettings();
     }
   }, [visible]);
+
+  // Cập nhật lượng Quota & thời gian hồi theo thời gian thực mỗi 1 giây khi mở modal
+  useEffect(() => {
+    if (visible && activeKeys.length > 0) {
+      const updateQuotas = () => {
+        const map: Record<string, KeyQuotaInfo> = {};
+        for (const k of activeKeys) {
+          map[k] = getKeyQuotaInfo(k);
+        }
+        setQuotaMap(map);
+      };
+
+      updateQuotas();
+      const timer = setInterval(updateQuotas, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [visible, activeKeys]);
 
   const loadSettings = async () => {
     try {
@@ -74,10 +98,13 @@ export function ApiKeySettingsModal({
       setKeysInput('');
 
       const initialMap: Record<string, { status: 'idle' | 'testing' | 'valid' | 'invalid'; message?: string }> = {};
+      const initialQuota: Record<string, KeyQuotaInfo> = {};
       loadedKeys.forEach((k) => {
         initialMap[k] = { status: 'valid', message: 'Khóa đã lưu' };
+        initialQuota[k] = getKeyQuotaInfo(k);
       });
       setKeyValidationMap(initialMap);
+      setQuotaMap(initialQuota);
     } catch {
       // ignore
     }
@@ -331,14 +358,17 @@ export function ApiKeySettingsModal({
               </View>
             </View>
 
-            {/* Tùy chọn 3: Quản lý Gemini API Keys */}
+            {/* Tùy chọn 3: Quản lý Gemini API Keys & Hạn mức Quota */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.cardIconBox}>
-                  <Feather name="key" size={18} color="#F59E0B" />
+                  <Feather name="key" size={18} color="#64748B" />
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle}>Danh sách Gemini API Key</Text>
+                  <Text style={styles.cardSubtitle}>
+                    Theo dõi hạn mức Free Tier: 15 lượt/phút (RPM) & 1.500 lượt/ngày (RPD)
+                  </Text>
                 </View>
               </View>
 
@@ -347,56 +377,104 @@ export function ApiKeySettingsModal({
                 <View style={styles.keyList}>
                   {activeKeys.map((k, idx) => {
                     const statusInfo = keyValidationMap[k] || { status: 'valid', message: 'Đã lưu' };
+                    const quota = quotaMap[k] || getKeyQuotaInfo(k);
+
                     return (
-                      <View key={k + idx} style={styles.keyRow}>
-                        <View style={styles.keyBadge}>
-                          <Text style={styles.keyBadgeText}>Key #{idx + 1}</Text>
-                        </View>
-                        <Text style={styles.keyText} numberOfLines={1}>
-                          {maskKey(k)}
-                        </Text>
+                      <View key={k + idx} style={styles.keyCard}>
+                        {/* Dòng tiêu đề Key */}
+                        <View style={styles.keyCardHeader}>
+                          <View style={styles.keyBadge}>
+                            <Text style={styles.keyBadgeText}>Key #{idx + 1}</Text>
+                          </View>
+                          <Text style={styles.keyText} numberOfLines={1}>
+                            {maskKey(k)}
+                          </Text>
 
-                        {/* Huy hiệu trạng thái kiểm tra ngầm */}
-                        {statusInfo.status === 'testing' ? (
-                          <View style={styles.statusPillTesting}>
-                            <ActivityIndicator size="small" color="#6366F1" />
-                          </View>
-                        ) : statusInfo.status === 'valid' ? (
-                          <View style={styles.statusPillValid}>
-                            <Feather name="check" size={10} color="#059669" />
-                            <Text style={styles.statusTextValid}>Hoạt động</Text>
-                          </View>
-                        ) : statusInfo.status === 'invalid' ? (
+                          {/* Huy hiệu trạng thái kiểm tra (Monochrome đơn sắc) */}
+                          {statusInfo.status === 'testing' ? (
+                            <View style={styles.statusPillTesting}>
+                              <ActivityIndicator size="small" color="#64748B" />
+                            </View>
+                          ) : statusInfo.status === 'valid' ? (
+                            <View style={styles.statusPillNeutral}>
+                              <Feather name="check" size={10} color="#475569" />
+                              <Text style={styles.statusTextNeutral}>Hoạt động</Text>
+                            </View>
+                          ) : statusInfo.status === 'invalid' ? (
+                            <Pressable
+                              style={styles.statusPillNeutral}
+                              onPress={() =>
+                                Alert.alert('Chi tiết lỗi', statusInfo.message || 'Khóa không hoạt động.')
+                              }
+                              hitSlop={6}
+                            >
+                              <Feather name="alert-circle" size={10} color="#475569" />
+                              <Text style={styles.statusTextNeutral}>Lỗi</Text>
+                            </Pressable>
+                          ) : null}
+
+                          {/* Nút kiểm tra lại (Monochrome) */}
                           <Pressable
-                            style={styles.statusPillInvalid}
-                            onPress={() =>
-                              Alert.alert('Chi tiết lỗi', statusInfo.message || 'Khóa không hoạt động.')
-                            }
-                            hitSlop={6}
+                            style={styles.keyActionBtn}
+                            onPress={() => handleTestKey(k)}
+                            hitSlop={8}
+                            disabled={statusInfo.status === 'testing'}
                           >
-                            <Feather name="alert-circle" size={10} color="#DC2626" />
-                            <Text style={styles.statusTextInvalid}>Lỗi</Text>
+                            <Feather name="refresh-cw" size={12} color="#64748B" />
                           </Pressable>
-                        ) : null}
 
-                        {/* Nút kiểm tra lại */}
-                        <Pressable
-                          style={styles.keyActionBtn}
-                          onPress={() => handleTestKey(k)}
-                          hitSlop={8}
-                          disabled={statusInfo.status === 'testing'}
-                        >
-                          <Feather name="refresh-cw" size={12} color="#64748B" />
-                        </Pressable>
+                          {/* Nút xóa (Monochrome) */}
+                          <Pressable
+                            style={styles.keyActionBtn}
+                            onPress={() => handleDeleteKey(k)}
+                            hitSlop={8}
+                          >
+                            <Feather name="trash-2" size={13} color="#94A3B8" />
+                          </Pressable>
+                        </View>
 
-                        {/* Nút xóa */}
-                        <Pressable
-                          style={styles.keyActionBtn}
-                          onPress={() => handleDeleteKey(k)}
-                          hitSlop={8}
-                        >
-                          <Feather name="trash-2" size={14} color="#94A3B8" />
-                        </Pressable>
+                        {/* Bảng theo dõi Quota & Thời gian hồi phục (Tối giản, đơn sắc) */}
+                        <View style={styles.quotaPanel}>
+                          <View style={styles.quotaRow}>
+                            <View style={styles.quotaCol}>
+                              <Text style={styles.quotaLabel}>Hạn mức phút (RPM)</Text>
+                              <Text style={styles.quotaValue}>
+                                {quota.rpmRemaining}/{quota.rpmLimit}{' '}
+                                <Text style={styles.quotaUnit}>lượt</Text>
+                              </Text>
+                            </View>
+
+                            <View style={styles.quotaColDivider} />
+
+                            <View style={styles.quotaCol}>
+                              <Text style={styles.quotaLabel}>Hạn mức ngày (RPD)</Text>
+                              <Text style={styles.quotaValue}>
+                                {quota.rpdRemaining.toLocaleString()}/{quota.rpdLimit.toLocaleString()}{' '}
+                                <Text style={styles.quotaUnit}>lượt</Text>
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Thanh tiến độ RPM tối giản 3px */}
+                          <View style={styles.progressBarTrack}>
+                            <View
+                              style={[
+                                styles.progressBarFill,
+                                {
+                                  width: `${Math.min(100, (quota.rpmUsed / quota.rpmLimit) * 100)}%`,
+                                },
+                              ]}
+                            />
+                          </View>
+
+                          {/* Thời gian hồi phục & reset */}
+                          <View style={styles.cooldownRow}>
+                            <Feather name="clock" size={11} color="#64748B" />
+                            <Text style={styles.cooldownText} numberOfLines={1}>
+                              {quota.statusText} • Đặt lại ngày lúc {quota.dailyResetTime} (sau {quota.dailyResetHoursRemaining}h {quota.dailyResetMinutesRemaining}p)
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     );
                   })}
@@ -559,79 +637,131 @@ const styles = StyleSheet.create({
   },
   keyList: {
     marginTop: 12,
-    gap: 8,
-  },
-  keyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
     gap: 10,
   },
+  keyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  keyCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
   keyBadge: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 8,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   keyBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#6366F1',
+    color: '#475569',
   },
   keyText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     color: '#334155',
-  },
-  keyDeleteBtn: {
-    padding: 6,
   },
   keyActionBtn: {
     padding: 6,
     borderRadius: 6,
   },
-  statusPillValid: {
+  statusPillNeutral: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#ECFDF5',
+    gap: 4,
+    backgroundColor: '#F8FAFC',
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#E2E8F0',
   },
-  statusTextValid: {
+  statusTextNeutral: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#065F46',
-  },
-  statusPillInvalid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  statusTextInvalid: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#991B1B',
+    fontWeight: '600',
+    color: '#475569',
   },
   statusPillTesting: {
     paddingHorizontal: 8,
     paddingVertical: 2,
+  },
+  quotaPanel: {
+    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 9,
+  },
+  quotaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quotaCol: {
+    flex: 1,
+  },
+  quotaColDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 10,
+  },
+  quotaLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  quotaValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    fontVariant: ['tabular-nums'],
+  },
+  quotaUnit: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  progressBarTrack: {
+    height: 3,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 1.5,
+    marginTop: 8,
+    marginBottom: 7,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#475569',
+    borderRadius: 1.5,
+  },
+  cooldownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  cooldownText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   emptyKeyBox: {
     marginTop: 10,

@@ -32,6 +32,26 @@ import {
   lookupLocalVocabulary,
   getUserTopics,
 } from '../database/repository';
+import {
+  recordGeminiRequest,
+  recordGemini429,
+  checkAndNotifyLastKeyQuota,
+  getKeyQuotaInfo,
+  isLastAvailableKey,
+  KeyQuotaInfo,
+  GEMINI_RPM_LIMIT,
+  GEMINI_RPD_LIMIT,
+  getNextPacificMidnight,
+} from './quotaTracker';
+
+export {
+  getKeyQuotaInfo,
+  isLastAvailableKey,
+  KeyQuotaInfo,
+  GEMINI_RPM_LIMIT,
+  GEMINI_RPD_LIMIT,
+  getNextPacificMidnight,
+};
 
 // ─── Cấu hình API Keys & Xoay tua khi hết Quota (Key Rotation) ───────────────
 let customUserKeys: string[] = [];
@@ -557,6 +577,11 @@ async function callGemini<T>(
         const controller = new AbortController();
         // Tăng timeout lên 14s để phù hợp với đường truyền mạng di động
         const timer = setTimeout(() => controller.abort(), 14000);
+
+        // Ghi nhận lượt gọi và kiểm tra cảnh báo nếu key cuối cùng sắp hết hạn mức
+        recordGeminiRequest(currentKey);
+        checkAndNotifyLastKeyQuota(keys, currentKey);
+
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -576,6 +601,8 @@ async function callGemini<T>(
           if (res.status === 429) {
             hadQuotaExceeded = true;
             quotaHitOnThisKey = true;
+            recordGemini429(currentKey, body);
+            checkAndNotifyLastKeyQuota(keys, currentKey);
             console.warn(`[Gemini] Key #${(currentKeyIndex % keys.length) + 1} hết quota (429) trên model ${model}. Đổi ngay key mới...`);
             if (keys.length > 1) {
               rotateGeminiKey();
