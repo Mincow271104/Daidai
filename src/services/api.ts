@@ -794,25 +794,27 @@ export async function transcribeSpeech(
     let instruction = '';
     if (targetLang === 'zh') {
       instruction =
-        'Hãy nghe đoạn âm thanh này của người nói tiếng Trung Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese, có thể có xen kẽ từ mượn tiếng Anh tự nhiên như meeting, project, check, deadline, call, bug, chill...).\n' +
+        'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text).\n' +
         'Quy tắc:\n' +
-        '1. Giữ nguyên các từ tiếng Anh viết bằng chữ Latinh.\n' +
+        '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
         '2. BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
-        '3. Chỉ trả về lời nói đã nghe được trong trường text, không giải thích thêm.';
+        '3. Nếu có xen kẽ từ tiếng Anh thì giữ nguyên chữ Latinh.\n' +
+        '4. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.';
     } else if (targetLang === 'vi') {
       instruction =
-        'Hãy nghe đoạn âm thanh này của người dùng (nói tiếng Việt hoặc tiếng Việt có chêm từ mượn tiếng Anh công nghệ/giao tiếp như meeting, deadline, check, bug, deploy, sếp...).\n' +
+        'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text).\n' +
         'Quy tắc:\n' +
-        '1. Giữ nguyên các từ tiếng Anh mượn viết bằng chữ Latinh.\n' +
-        '2. Chép lại chính xác nội dung bằng chữ Quốc ngữ tiếng Việt chuẩn xác.\n' +
+        '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
+        '2. Chép lại chính xác nội dung bằng chữ Quốc ngữ tiếng Việt chuẩn xác (nếu có từ tiếng Anh xen kẽ thì giữ nguyên chữ Latinh).\n' +
         '3. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.';
     } else {
       instruction =
-        'Hãy nghe đoạn âm thanh này và chép lại chính xác nội dung đã nói (có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan - kể cả khi có chêm xen tiếng Anh tự nhiên như meeting, project, check, deadline, chill...).\n' +
+        'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text, có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan).\n' +
         'Quy tắc:\n' +
-        '1. Giữ nguyên các từ tiếng Anh viết bằng chữ Latinh.\n' +
+        '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
         '2. Phần tiếng Trung BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
-        '3. Chỉ trả về lời nói đã nghe được trong trường text, không giải thích thêm.';
+        '3. Giữ nguyên các từ tiếng Anh hoặc tiếng Việt viết bằng chữ Latinh nếu có.\n' +
+        '4. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.';
     }
 
     const speechSchema = {
@@ -1018,15 +1020,15 @@ export async function analyzeText(text: string, fieldKey: string): Promise<AIAna
   const promptText =
     `Lĩnh vực chuyên ngành: ${field.prompt} (${field.label}).\n` +
     `Danh sách các chủ đề (topic) hợp lệ: ${topicsListDesc}.\n\n` +
-    `Nhiệm vụ cho từng câu trong đoạn văn sau (đầu vào có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể Đài Loan - kể cả câu người Đài nói có chêm xen tiếng Anh như meeting, project, check, deadline, chill...):\n` +
+    `Nhiệm vụ cho từng câu trong đoạn văn sau (đầu vào có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể Đài Loan - kể cả khi có từ mượn tiếng Anh xen kẽ):\n` +
     `- ${inputToAnalyze}\n\n` +
     `Quy tắc phân tích đa ngữ:\n` +
     `A. NẾU ĐẦU VÀO LÀ TIẾNG TRUNG PHỒN THỂ (kể cả câu có chêm tiếng Anh):\n` +
-    `1. sentence_tw: GIỮ NGUYÊN VĂN 100% cách nói đó của người Đài (giữ nguyên cả từ tiếng Anh họ dùng nếu có, không đổi sang từ Đại Lục, chỉ sửa lỗi nhận diện chữ đồng âm nếu có).\n` +
+    `1. sentence_tw: GIỮ NGUYÊN VĂN 100% cách nói đó của người Đài (giữ nguyên cả từ tiếng Anh nếu có, không đổi sang từ Đại Lục, không tự ý sửa đổi từ ngữ đã nói).\n` +
     `2. pinyin: Phiên âm Pinyin tương ứng có đầy đủ dấu thanh, các âm tiết CÁCH NHAU BẰNG DẤU CÁCH rõ ràng (spaced Pinyin, giữ nguyên từ tiếng Anh nếu có xen kẽ).\n` +
     `3. vi: Dịch sang tiếng Việt tự nhiên, thoát ý, đúng ngữ cảnh đời thực (không dịch máy móc).\n` +
     `4. sentence_en: Dịch sang câu tiếng Anh giao tiếp tự nhiên, hoàn chỉnh.\n` +
-    `5. terms: Trích xuất thuật ngữ chuyên môn hoặc từ khóa quan trọng trong câu. ĐẶC BIỆT: Nếu câu có từ tiếng Anh chêm xen (như project, deadline, check, bug...), hãy bổ sung từ tiếng Trung Phồn thể chuẩn Đài Loan tương đương trong tw_traditional (ví dụ: project -> 專案, check -> 確認/檢查, bug -> 臭蟲) để người học đối chiếu và học thêm!\n\n` +
+    `5. terms: Trích xuất thuật ngữ chuyên môn hoặc từ khóa quan trọng trong câu (nếu có). Nếu câu có từ mượn tiếng Anh, hãy bổ sung từ tiếng Trung Phồn thể chuẩn Đài Loan tương đương trong tw_traditional để người học đối chiếu. Nếu không có thuật ngữ chuyên môn thì để mảng rỗng [].\n\n` +
     `B. NẾU ĐẦU VÀO LÀ TIẾNG VIỆT HOẶC TIẾNG ANH:\n` +
     `1. sentence_tw: Dịch sang tiếng Trung Phồn thể chuẩn Đài Loan tự nhiên (TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ, KHÔNG DÙNG TỪ ĐẠI LỤC, KHÔNG DỊCH MÁY MÓC).\n` +
     `2. pinyin: Phiên âm Pinyin có đầy đủ dấu thanh, các âm tiết CÁCH NHAU BẰNG DẤU CÁCH rõ ràng (spaced Pinyin).\n` +
@@ -1136,11 +1138,12 @@ export async function processAudio(audioUri: string, fieldKey: string): Promise<
     [
       {
         text:
-          'Hãy nghe đoạn âm thanh này và chép lại chính xác nội dung đã nói (có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan - kể cả khi có chêm xen tiếng Anh tự nhiên như meeting, project, check, deadline, chill...).\n' +
+          'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text, có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan).\n' +
           'Quy tắc:\n' +
-          '1. Giữ nguyên các từ tiếng Anh viết bằng chữ Latinh.\n' +
+          '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
           '2. Phần tiếng Trung BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
-          '3. Chỉ trả về lời nói đã nghe được trong trường text, không giải thích thêm.',
+          '3. Giữ nguyên các từ tiếng Anh hoặc tiếng Việt viết bằng chữ Latinh nếu có.\n' +
+          '4. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.',
       },
       { inlineData: { mimeType, data: base64 } },
     ],
@@ -1580,22 +1583,22 @@ export async function translateInstantFirstPass(
         `   - QUY TẮC TỰ NHIÊN ĐỜI THƯỜNG: Với các câu giao tiếp, hỏi thăm, đi lại, sinh hoạt thông thường (ví dụ: "Nãy mấy giờ về?" -> dịch tự nhiên đúng nghĩa là "剛剛幾點回來的？" hoặc "剛剛幾點回去的？"), TUYỆT ĐỐI KHÔNG tự tiện suy diễn câu đời thường thành thuật ngữ công sở (không tự biến "về" thành "tan làm/下班", không tự biến "nói chuyện" thành "họp/開會").\n` +
         `   - CHỈ KHI câu nói thực sự chứa nội dung hoặc thuật ngữ công việc thuộc lĩnh vực "${field.label}", mới áp dụng thuật ngữ chuyên ngành đó.\n` +
         `   - Sử dụng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ. Kết hợp ngữ khí và khẩu ngữ tự nhiên của người Đài (好喔, 了解, 麻煩您, 對啊, 好的, 沒問題, 辛苦了...).\n` +
-        `   - Giữ nguyên các từ tiếng Anh mượn phổ biến trong giao tiếp hiện đại nếu có (meeting, check, confirm, project, deploy, bug, call...).\n` +
-        `3. pinyin: Phiên âm Pinyin có đầy đủ dấu thanh, các âm tiết CÁCH NHAU BẰNG DẤU CÁCH rõ ràng (spaced Pinyin, ví dụ: "gāng gāng jǐ diǎn huí lái de?").\n` +
+          `   - Giữ nguyên các từ tiếng Anh mượn nếu có trong câu nói.\n` +
+        `3. pinyin: Phiên âm Pinyin có đầy đủ dấu thanh, các âm tiết CÁCH NHAU BẰNG DẤU CÁCH rõ ràng (spaced Pinyin).\n` +
         `4. translation_vi: Câu tiếng Việt hoàn chỉnh, chuẩn mực, đúng ý người nói.\n` +
-        `5. translation_en: Câu tiếng Anh giao tiếp tự nhiên ngắn gọn, chuẩn bản ngữ (ví dụ: "What time did you get back earlier?").\n` +
-        `6. chunks: Tách translation_tw thành 2 đến 5 cụm từ có nghĩa (ví dụ: ["剛剛", "幾點回來的"]). Khi ghép các cụm lại phải khớp hoàn toàn translation_tw.`
+        `5. translation_en: Câu tiếng Anh giao tiếp tự nhiên ngắn gọn, chuẩn bản ngữ.\n` +
+        `6. chunks: Tách translation_tw thành 2 đến 5 cụm từ có nghĩa. Khi ghép các cụm lại phải khớp hoàn toàn translation_tw.`
       : `Lĩnh vực đang chọn: ${field.label} (${field.prompt}).\n` +
         `Danh sách các chủ đề (topic) hợp lệ: daily, greeting, food, shopping, travel, work, feelings, health, other.\n\n` +
         `Đối tác người Đài Loan vừa nói: "${trimmed}".\n\n` +
         `Nhiệm vụ dịch thuật sang tiếng Việt:\n` +
         `1. topic: Xác định đúng 1 chủ đề của câu nói (daily, work, food, greeting...).\n` +
-        `2. translation_tw: Chuẩn hóa và giữ nguyên văn bằng chữ Hán Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese) cùng các từ mượn tiếng Anh nếu có (như meeting, check, confirm, project, deploy, call...). TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ (Simplified Chinese). Sửa lỗi chính tả âm học nếu nhận diện sai chữ đồng âm vô nghĩa.\n` +
+        `2. translation_tw: Chuẩn hóa và giữ nguyên văn chính xác lời nói của đối tác bằng chữ Hán Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese) cùng các từ mượn tiếng Anh nếu có. TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ (Simplified Chinese). Tuyệt đối không tự ý thay đổi hay đoán sửa từ ngữ đối tác đã nói.\n` +
         `3. pinyin: Phiên âm Pinyin có đầy đủ dấu thanh cho phần chữ Hán, giữ nguyên từ tiếng Anh nếu có xen kẽ, các âm tiết CÁCH NHAU BẰNG DẤU CÁCH rõ ràng (spaced Pinyin).\n` +
         `4. translation_vi: Dịch sang TIẾNG VIỆT CỰC KỲ TỰ NHIÊN, TRÔI CHẢY, THOÁT Ý, đúng văn phong đời thực người Việt nói chuyện (TUYỆT ĐỐI KHÔNG DỊCH MÁY MÓC TỪNG CHỮ cứng nhắc, KHÔNG tự suy diễn thêm ý mà đối tác không nói):\n` +
         `   - Chuyển ngữ mềm mại, tinh tế các hư từ cảm thán và khẩu ngữ thực tế của người Đài (喔, 啦, 耶, 吧, 呢, 好的, 辛苦了, 不好意思...).\n` +
         `   - Nếu câu nói đề cập đến công việc ${field.label}, dùng đúng thuật ngữ tương đương người Việt trong ngành hiểu ngay.\n` +
-        `   - Nếu câu nói chêm tiếng Anh (meeting, check, confirm...), hãy dung hòa tự nhiên vào câu tiếng Việt.\n` +
+        `   - Nếu câu nói chêm tiếng Anh, hãy dung hòa tự nhiên vào câu tiếng Việt.\n` +
         `5. translation_en: Dịch sang tiếng Anh giao tiếp tự nhiên (Conversational English), ngắn gọn, chuẩn bản ngữ.\n` +
         `6. chunks: Tách translation_tw thành 2 đến 5 cụm từ có nghĩa (ví dụ: ["明天早上", "十點開會", "喔"]). Khi ghép các cụm lại phải khớp hoàn toàn translation_tw.`) +
     nativeNotes;

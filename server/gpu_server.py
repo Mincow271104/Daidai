@@ -243,25 +243,17 @@ async def transcribe(
 
         if lang_code == "zh":
             transcribe_args["language"] = "zh"
-            # Tuyệt đối không dùng câu mệnh lệnh như "請使用繁體字" vì Whisper sẽ tưởng là lời thoại và đọc lại!
-            # Chỉ dùng từ khóa từ điển tự nhiên để định hướng ngữ cảnh:
-            transcribe_args["initial_prompt"] = (
-                "繁體中文，臺灣腔調，生活，工作，會議，專案，排程，報告，簡報，剛剛，幾點，回來，下班，吃飯，在哪裡，"
-                "meeting, check, project, deadline, report, client, slide, confirm, order, cancel, vibe, chill。"
-            )
+            # Định hướng ký tự Phồn thể chuẩn Đài Loan mà không mớm bất kỳ từ vựng cụ thể nào
+            transcribe_args["initial_prompt"] = "繁體中文，臺灣腔調。"
         elif lang_code == "vi":
             transcribe_args["language"] = "vi"
-            transcribe_args["initial_prompt"] = FIELD_PROMPTS.get(selected_field, FIELD_PROMPTS["it"])
+            transcribe_args["initial_prompt"] = "Tiếng Việt chuẩn xác。"
         elif lang_code == "en":
             transcribe_args["language"] = "en"
-            transcribe_args["initial_prompt"] = "Conversational English with technical, business, and daily terms."
+            transcribe_args["initial_prompt"] = "Conversational English."
         else:
-            # Chế độ tự động nhận diện ngôn ngữ (Auto-detection): Hỗ trợ Việt, Anh, và Trung Phồn thể Đài Loan
-            field_prompt = FIELD_PROMPTS.get(selected_field, FIELD_PROMPTS["it"])
-            transcribe_args["initial_prompt"] = (
-                f"{field_prompt} 繁體中文，臺灣，Tiếng Việt, English, "
-                "meeting, check, project, deadline, slide, client, test, report, bug, database, server, review, PR, cancel, order, coffee, vibe, chill。"
-            )
+            # Chế độ tự động nhận diện ngôn ngữ trung lập, không định kiến từ vựng
+            transcribe_args["initial_prompt"] = "繁體中文，臺灣，Tiếng Việt, English。"
 
         def extract_clean_text(segs):
             valid_parts = []

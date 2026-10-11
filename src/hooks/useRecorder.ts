@@ -23,12 +23,12 @@ export function useRecorder(options?: UseRecorderOptions): RecorderHook {
   const [duration, setDuration] = useState(0);
   const [hasSpoken, setHasSpoken] = useState(false);
 
-  // Cấu hình ghi âm 16kHz Mono siêu nhẹ chuyên dụng cho Whisper STT (giảm 75% dung lượng file)
+  // Cấu hình ghi âm 16kHz Mono chất lượng cao (64kbps) đảm bảo rõ nét các phụ âm gió/bật hơi (j, q, ch, x)
   const recorder = useAudioRecorder({
     ...RecordingPresets.HIGH_QUALITY,
     sampleRate: 16000,
     numberOfChannels: 1,
-    bitRate: 32000,
+    bitRate: 64000,
     android: {
       ...RecordingPresets.HIGH_QUALITY.android,
       sampleRate: 16000,
