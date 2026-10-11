@@ -90,18 +90,11 @@ export async function testGeminiApiKey(key: string): Promise<KeyValidationResult
     return { valid: false, reason: 'Khóa không được để trống.' };
   }
 
-  // Gemini API key chuẩn dài 39 ký tự, không chứa khoảng trắng
-  if (trimmed.length < 35 || trimmed.length > 45 || /\s/.test(trimmed)) {
+  // Chặn nếu chuỗi có chứa khoảng trắng (như dán nhầm câu văn bản)
+  if (/\s/.test(trimmed)) {
     return {
       valid: false,
-      reason: 'Định dạng không đúng. Gemini API Key chuẩn gồm khoảng 39 ký tự và không chứa khoảng trắng.',
-    };
-  }
-
-  if (!trimmed.startsWith('AIza')) {
-    return {
-      valid: false,
-      reason: 'Khóa không hợp lệ (Gemini API Key của Google luôn bắt đầu bằng tiền tố "AIza").',
+      reason: 'Khóa API không được chứa khoảng trắng. Vui lòng kiểm tra lại.',
     };
   }
 

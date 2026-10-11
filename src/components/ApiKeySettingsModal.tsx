@@ -103,15 +103,6 @@ export function ApiKeySettingsModal({
     const raw = keysInput.trim();
     if (!raw) return;
 
-    // Giới hạn độ dài dán vào tối đa 200 ký tự để chặn dán nhầm văn bản dài
-    if (raw.length > 200) {
-      Alert.alert(
-        'Đoạn văn bản quá dài',
-        'Nội dung vừa dán vượt quá giới hạn cho phép (tối đa 200 ký tự). Gemini API Key chuẩn dài đúng 39 ký tự và bắt đầu bằng "AIzaSy".'
-      );
-      return;
-    }
-
     // Tách theo dấu phẩy hoặc dấu xuống dòng nếu người dùng dán nhiều key
     const tokens = raw
       .split(/[\n,]+/)
@@ -123,26 +114,12 @@ export function ApiKeySettingsModal({
       return;
     }
 
-    // Kiểm tra định dạng từng token
+    // Kiểm tra định dạng cơ bản: không chứa khoảng trắng
     for (const token of tokens) {
       if (/\s/.test(token)) {
         Alert.alert(
           'Khóa không hợp lệ',
-          'API Key không được chứa khoảng trắng. Bạn có thể đã dán nhầm một đoạn văn bản.'
-        );
-        return;
-      }
-      if (token.length < 35 || token.length > 45) {
-        Alert.alert(
-          'Độ dài không hợp lệ',
-          `Khóa "${maskKey(token)}" có ${token.length} ký tự. Gemini API Key chuẩn thường có đúng 39 ký tự.`
-        );
-        return;
-      }
-      if (!token.startsWith('AIza')) {
-        Alert.alert(
-          'Tiền tố không hợp lệ',
-          `Khóa "${maskKey(token)}" không bắt đầu bằng "AIza". Vui lòng lấy khóa từ Google AI Studio.`
+          'API Key không được chứa khoảng trắng. Vui lòng kiểm tra lại chuỗi bạn vừa nhập.'
         );
         return;
       }
@@ -437,17 +414,11 @@ export function ApiKeySettingsModal({
                     style={styles.input}
                     value={keysInput}
                     onChangeText={setKeysInput}
-                    placeholder="Dán Gemini API Key (AIzaSy...) tại đây..."
+                    placeholder="Dán Gemini API Key tại đây..."
                     placeholderTextColor="#94A3B8"
-                    maxLength={150}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
-                  {keysInput.trim().length > 0 && (
-                    <Text style={styles.charCountText}>
-                      {keysInput.trim().length}/39 ký tự
-                    </Text>
-                  )}
                 </View>
 
                 <Pressable
