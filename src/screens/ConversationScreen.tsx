@@ -19,6 +19,7 @@ import { FieldPickerModal } from '../components/FieldPickerModal';
 import { NativeFeedbackModal } from '../components/NativeFeedbackModal';
 import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
 import { SituationalAssistantModal } from '../components/SituationalAssistantModal';
+import { ensureOnline } from '../services/network';
 import { ConversationMessage, ConversationSession, AITerm } from '../types';
 import {
   translateConversationTurn,
@@ -219,6 +220,8 @@ export function ConversationScreen() {
   // Bắt đầu ghi âm
   const handleStartRecording = async (sender: 'me' | 'partner') => {
     if (recorder.isRecording || isProcessing) return;
+    const online = await ensureOnline('Dịch hội thoại');
+    if (!online) return;
     recordingSenderRef.current = sender;
     setRecordingSender(sender);
     const ok = await recorder.startRecording();
@@ -498,7 +501,9 @@ export function ConversationScreen() {
           <View style={styles.headerBottomActions}>
             <Pressable
               style={styles.situationalBtnBadge}
-              onPress={() => {
+              onPress={async () => {
+                const online = await ensureOnline('Hỏi AI');
+                if (!online) return;
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setSituationalModalVisible(true);
               }}

@@ -11,6 +11,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -23,8 +24,9 @@ import {
   setNotificationSettings,
   NotificationSettings,
 } from '../database/repository';
-import { setCustomUserKeys, getGeminiKeys } from '../services/api';
+import { setCustomUserKeys, getGeminiKeys, testGeminiApiKey } from '../services/api';
 import { syncAllSmartNotifications } from '../services/notifications';
+import { ensureOnline } from '../services/network';
 
 interface ApiKeySettingsModalProps {
   visible: boolean;
@@ -46,6 +48,10 @@ export function ApiKeySettingsModal({
     morningEnabled: true,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [testingStatusText, setTestingStatusText] = useState('');
+  const [keyValidationMap, setKeyValidationMap] = useState<
+    Record<string, { status: 'idle' | 'testing' | 'valid' | 'invalid'; message?: string }>
+  >({});
 
   useEffect(() => {
     if (visible) {
@@ -61,10 +67,17 @@ export function ApiKeySettingsModal({
         getNotificationSettings(),
       ]);
       const currentAllKeys = getGeminiKeys();
-      setActiveKeys(currentAllKeys.length > 0 ? currentAllKeys : savedKeys);
+      const loadedKeys = currentAllKeys.length > 0 ? currentAllKeys : savedKeys;
+      setActiveKeys(loadedKeys);
       setAutoSpeak(speakEnabled);
       setNotifSettings(notif);
       setKeysInput('');
+
+      const initialMap: Record<string, { status: 'idle' | 'testing' | 'valid' | 'invalid'; message?: string }> = {};
+      loadedKeys.forEach((k) => {
+        initialMap[k] = { status: 'valid', message: 'Khóa đã lưu' };
+      });
+      setKeyValidationMap(initialMap);
     } catch {
       // ignore
     }
@@ -90,31 +103,128 @@ export function ApiKeySettingsModal({
     const raw = keysInput.trim();
     if (!raw) return;
 
-    // Tách theo dấu phẩy hoặc dấu xuống dòng
-    const newKeys = raw
-      .split(/[\n,]+/)
-      .map((k) => k.trim())
-      .filter((k) => k.length > 10);
-
-    if (newKeys.length === 0) {
-      Alert.alert('Khóa không hợp lệ', 'Khóa Gemini API phải có ít nhất 10 ký tự.');
+    // Giới hạn độ dài dán vào tối đa 200 ký tự để chặn dán nhầm văn bản dài
+    if (raw.length > 200) {
+      Alert.alert(
+        'Đoạn văn bản quá dài',
+        'Nội dung vừa dán vượt quá giới hạn cho phép (tối đa 200 ký tự). Gemini API Key chuẩn dài đúng 39 ký tự và bắt đầu bằng "AIzaSy".'
+      );
       return;
     }
 
+    // Tách theo dấu phẩy hoặc dấu xuống dòng nếu người dùng dán nhiều key
+    const tokens = raw
+      .split(/[\n,]+/)
+      .map((k) => k.trim())
+      .filter(Boolean);
+
+    if (tokens.length === 0) {
+      Alert.alert('Khóa không hợp lệ', 'Vui lòng nhập API Key.');
+      return;
+    }
+
+    // Kiểm tra định dạng từng token
+    for (const token of tokens) {
+      if (/\s/.test(token)) {
+        Alert.alert(
+          'Khóa không hợp lệ',
+          'API Key không được chứa khoảng trắng. Bạn có thể đã dán nhầm một đoạn văn bản.'
+        );
+        return;
+      }
+      if (token.length < 35 || token.length > 45) {
+        Alert.alert(
+          'Độ dài không hợp lệ',
+          `Khóa "${maskKey(token)}" có ${token.length} ký tự. Gemini API Key chuẩn thường có đúng 39 ký tự.`
+        );
+        return;
+      }
+      if (!token.startsWith('AIza')) {
+        Alert.alert(
+          'Tiền tố không hợp lệ',
+          `Khóa "${maskKey(token)}" không bắt đầu bằng "AIza". Vui lòng lấy khóa từ Google AI Studio.`
+        );
+        return;
+      }
+    }
+
+    // Kiểm tra kết nối mạng trước khi test ngầm
+    const online = await ensureOnline('Kiểm tra API Key');
+    if (!online) return;
+
     setIsSaving(true);
+    setTestingStatusText('Đang kiểm tra kết nối với Google AI...');
+
     try {
-      const combined = Array.from(new Set([...activeKeys, ...newKeys]));
+      const validNewKeys: string[] = [];
+
+      for (const token of tokens) {
+        const checkResult = await testGeminiApiKey(token);
+        if (!checkResult.valid) {
+          Alert.alert(
+            'Khóa không hoạt động',
+            `Không thể thêm khóa ${maskKey(token)}:\n${checkResult.reason}`
+          );
+          setIsSaving(false);
+          setTestingStatusText('');
+          return;
+        }
+        validNewKeys.push(token);
+      }
+
+      const combined = Array.from(new Set([...activeKeys, ...validNewKeys]));
       await setSavedApiKeys(combined);
       setCustomUserKeys(combined);
       setActiveKeys(combined);
+
+      // Cập nhật trạng thái hợp lệ cho các key vừa thêm
+      const updatedMap = { ...keyValidationMap };
+      validNewKeys.forEach((k) => {
+        updatedMap[k] = { status: 'valid', message: 'Hoạt động tốt' };
+      });
+      setKeyValidationMap(updatedMap);
+
       setKeysInput('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Thành công', `Đã lưu ${newKeys.length} khóa API mới vào ứng dụng.`);
+      Alert.alert(
+        'Khóa hoạt động tốt',
+        `Đã kiểm tra thành công và lưu ${validNewKeys.length} khóa API vào ứng dụng.`
+      );
       onSettingsChanged?.();
     } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể lưu API Key.');
+      Alert.alert('Lỗi kiểm tra', err.message || 'Không thể xác thực API Key.');
     } finally {
       setIsSaving(false);
+      setTestingStatusText('');
+    }
+  };
+
+  const handleTestKey = async (keyToTest: string) => {
+    const online = await ensureOnline('Kiểm tra API Key');
+    if (!online) return;
+
+    setKeyValidationMap((prev) => ({
+      ...prev,
+      [keyToTest]: { status: 'testing', message: 'Đang kiểm tra...' },
+    }));
+    Haptics.selectionAsync();
+
+    const result = await testGeminiApiKey(keyToTest);
+
+    setKeyValidationMap((prev) => ({
+      ...prev,
+      [keyToTest]: {
+        status: result.valid ? 'valid' : 'invalid',
+        message: result.reason,
+      },
+    }));
+
+    if (result.valid) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Khóa hoạt động tốt', `${maskKey(keyToTest)}:\n${result.reason}`);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Khóa báo lỗi', `${maskKey(keyToTest)}:\n${result.reason}`);
     }
   };
 
@@ -258,21 +368,61 @@ export function ApiKeySettingsModal({
               {/* Danh sách các key đang có */}
               {activeKeys.length > 0 ? (
                 <View style={styles.keyList}>
-                  {activeKeys.map((k, idx) => (
-                    <View key={k + idx} style={styles.keyRow}>
-                      <View style={styles.keyBadge}>
-                        <Text style={styles.keyBadgeText}>Key #{idx + 1}</Text>
+                  {activeKeys.map((k, idx) => {
+                    const statusInfo = keyValidationMap[k] || { status: 'valid', message: 'Đã lưu' };
+                    return (
+                      <View key={k + idx} style={styles.keyRow}>
+                        <View style={styles.keyBadge}>
+                          <Text style={styles.keyBadgeText}>Key #{idx + 1}</Text>
+                        </View>
+                        <Text style={styles.keyText} numberOfLines={1}>
+                          {maskKey(k)}
+                        </Text>
+
+                        {/* Huy hiệu trạng thái kiểm tra ngầm */}
+                        {statusInfo.status === 'testing' ? (
+                          <View style={styles.statusPillTesting}>
+                            <ActivityIndicator size="small" color="#6366F1" />
+                          </View>
+                        ) : statusInfo.status === 'valid' ? (
+                          <View style={styles.statusPillValid}>
+                            <Feather name="check" size={10} color="#059669" />
+                            <Text style={styles.statusTextValid}>Hoạt động</Text>
+                          </View>
+                        ) : statusInfo.status === 'invalid' ? (
+                          <Pressable
+                            style={styles.statusPillInvalid}
+                            onPress={() =>
+                              Alert.alert('Chi tiết lỗi', statusInfo.message || 'Khóa không hoạt động.')
+                            }
+                            hitSlop={6}
+                          >
+                            <Feather name="alert-circle" size={10} color="#DC2626" />
+                            <Text style={styles.statusTextInvalid}>Lỗi</Text>
+                          </Pressable>
+                        ) : null}
+
+                        {/* Nút kiểm tra lại */}
+                        <Pressable
+                          style={styles.keyActionBtn}
+                          onPress={() => handleTestKey(k)}
+                          hitSlop={8}
+                          disabled={statusInfo.status === 'testing'}
+                        >
+                          <Feather name="refresh-cw" size={12} color="#64748B" />
+                        </Pressable>
+
+                        {/* Nút xóa */}
+                        <Pressable
+                          style={styles.keyActionBtn}
+                          onPress={() => handleDeleteKey(k)}
+                          hitSlop={8}
+                        >
+                          <Feather name="trash-2" size={14} color="#94A3B8" />
+                        </Pressable>
                       </View>
-                      <Text style={styles.keyText}>{maskKey(k)}</Text>
-                      <Pressable
-                        style={styles.keyDeleteBtn}
-                        onPress={() => handleDeleteKey(k)}
-                        hitSlop={8}
-                      >
-                        <Feather name="trash-2" size={16} color="#EF4444" />
-                      </Pressable>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               ) : (
                 <View style={styles.emptyKeyBox}>
@@ -282,24 +432,45 @@ export function ApiKeySettingsModal({
 
               {/* Form thêm key mới */}
               <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  value={keysInput}
-                  onChangeText={setKeysInput}
-                  placeholder="Dán API Key (AIzaSy...) tại đây..."
-                  placeholderTextColor="#94A3B8"
-                  multiline
-                  numberOfLines={2}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+                <View style={styles.inputWrap}>
+                  <TextInput
+                    style={styles.input}
+                    value={keysInput}
+                    onChangeText={setKeysInput}
+                    placeholder="Dán Gemini API Key (AIzaSy...) tại đây..."
+                    placeholderTextColor="#94A3B8"
+                    maxLength={150}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {keysInput.trim().length > 0 && (
+                    <Text style={styles.charCountText}>
+                      {keysInput.trim().length}/39 ký tự
+                    </Text>
+                  )}
+                </View>
+
                 <Pressable
-                  style={[styles.saveBtn, (!keysInput.trim() || isSaving) && styles.saveBtnDisabled]}
+                  style={[
+                    styles.saveBtn,
+                    (!keysInput.trim() || isSaving) && styles.saveBtnDisabled,
+                  ]}
                   onPress={handleAddKeys}
                   disabled={!keysInput.trim() || isSaving}
                 >
-                  <Feather name="plus-circle" size={16} color="#FFFFFF" />
-                  <Text style={styles.saveBtnText}>Thêm Khóa</Text>
+                  {isSaving ? (
+                    <>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.saveBtnText}>
+                        {testingStatusText || 'Đang kiểm tra...'}
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Feather name="check-circle" size={16} color="#FFFFFF" />
+                      <Text style={styles.saveBtnText}>Kiểm tra & Thêm Khóa</Text>
+                    </>
+                  )}
                 </Pressable>
               </View>
 
@@ -451,6 +622,46 @@ const styles = StyleSheet.create({
   keyDeleteBtn: {
     padding: 6,
   },
+  keyActionBtn: {
+    padding: 6,
+    borderRadius: 6,
+  },
+  statusPillValid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  statusTextValid: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  statusPillInvalid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  statusTextInvalid: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#991B1B',
+  },
+  statusPillTesting: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
   emptyKeyBox: {
     marginTop: 10,
     paddingVertical: 12,
@@ -465,16 +676,27 @@ const styles = StyleSheet.create({
     marginTop: 12,
     gap: 10,
   },
-  input: {
+  inputWrap: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 6,
+  },
+  input: {
     fontSize: 13,
     color: '#0F172A',
-    minHeight: 56,
-    textAlignVertical: 'top',
+    padding: 0,
+    minHeight: 28,
+  },
+  charCountText: {
+    alignSelf: 'flex-end',
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 4,
+    fontWeight: '500',
   },
   saveBtn: {
     flexDirection: 'row',

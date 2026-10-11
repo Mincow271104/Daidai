@@ -12,6 +12,7 @@ import { FIELDS, getField } from '../constants/fields';
 import { suggestTerms } from '../services/api';
 import { insertVocabulary, termExists } from '../database/repository';
 import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
+import { ensureOnline } from '../services/network';
 import { AITerm } from '../types';
 
 export function FieldScreen() {
@@ -27,6 +28,8 @@ export function FieldScreen() {
   }, []);
 
   const loadSuggestions = useCallback(async (fieldKey: string) => {
+    const online = await ensureOnline('Gợi ý thuật ngữ');
+    if (!online) return;
     setLoading(true);
     try {
       const existing = vocabulary.map((v) => v.original_term);

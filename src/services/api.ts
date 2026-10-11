@@ -76,6 +76,77 @@ export function rotateGeminiKey(): string {
   return getActiveGeminiKey();
 }
 
+export interface KeyValidationResult {
+  valid: boolean;
+  reason: string;
+}
+
+/**
+ * Kiểm tra ngầm xem một Gemini API Key có hoạt động và hợp lệ không
+ */
+export async function testGeminiApiKey(key: string): Promise<KeyValidationResult> {
+  const trimmed = key.trim();
+  if (!trimmed) {
+    return { valid: false, reason: 'Khóa không được để trống.' };
+  }
+
+  // Gemini API key chuẩn dài 39 ký tự, không chứa khoảng trắng
+  if (trimmed.length < 35 || trimmed.length > 45 || /\s/.test(trimmed)) {
+    return {
+      valid: false,
+      reason: 'Định dạng không đúng. Gemini API Key chuẩn gồm khoảng 39 ký tự và không chứa khoảng trắng.',
+    };
+  }
+
+  if (!trimmed.startsWith('AIza')) {
+    return {
+      valid: false,
+      reason: 'Khóa không hợp lệ (Gemini API Key của Google luôn bắt đầu bằng tiền tố "AIza").',
+    };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6500);
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${trimmed}`,
+      {
+        method: 'GET',
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeout);
+
+    if (res.status === 200) {
+      return { valid: true, reason: 'Khóa hoạt động tốt' };
+    }
+
+    if (res.status === 400 || res.status === 403) {
+      const data: any = await res.json().catch(() => ({}));
+      const errReason = data?.error?.details?.[0]?.reason || data?.error?.status;
+      if (errReason === 'API_KEY_INVALID') {
+        return { valid: false, reason: 'Khóa không tồn tại hoặc sai ký tự.' };
+      }
+      return { valid: false, reason: data?.error?.message || 'Khóa không được phép truy cập Gemini API.' };
+    }
+
+    if (res.status === 429) {
+      return { valid: true, reason: 'Khóa hợp lệ (nhưng đang tạm chạm hạn mức RPM).' };
+    }
+
+    return { valid: false, reason: `Máy chủ Google báo mã ${res.status}.` };
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      return { valid: false, reason: 'Hết thời gian chờ phản hồi (kết nối mạng quá chậm).' };
+    }
+    const msg = String(err?.message || '');
+    if (msg.includes('Network request failed') || msg.includes('Failed to fetch')) {
+      return { valid: false, reason: 'Không có kết nối Internet để kiểm tra khóa.' };
+    }
+    return { valid: false, reason: `Không thể kết nối tới Google: ${msg}` };
+  }
+}
+
 const LOCAL_AI_URL = (process.env.EXPO_PUBLIC_LOCAL_AI_URL ?? '').replace(/\/$/, '');
 
 let lastWorkingGpuUrl: string | null = null;
@@ -550,6 +621,9 @@ async function callGemini<T>(
         }
       } catch (e: any) {
         lastError = e?.message ?? String(e);
+        if (lastError.includes('Network request failed') || lastError.includes('Failed to fetch')) {
+          throw new Error('Không có kết nối Internet. Vui lòng kiểm tra lại kết nối Wi-Fi hoặc 4G/5G.');
+        }
         console.warn(`[Gemini] Model ${model} gặp ngoại lệ (${lastError}), đang đổi model...`);
       }
     }

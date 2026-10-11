@@ -9,6 +9,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initDatabase } from './src/database/schema';
 import { requestNotificationPermission, syncAllSmartNotifications } from './src/services/notifications';
+import { initNetworkListener } from './src/services/network';
+import { OfflineNotice } from './src/components/OfflineNotice';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ConversationScreen } from './src/screens/ConversationScreen';
 import { QuestScreen } from './src/screens/QuestScreen';
@@ -62,7 +64,12 @@ export default function App() {
       }
     });
 
-    return () => sub.remove();
+    const unsubNetwork = initNetworkListener();
+
+    return () => {
+      sub.remove();
+      unsubNetwork();
+    };
   }, []);
 
   if (!isReady) {
@@ -76,8 +83,9 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <StatusBar style="dark" />
+      <OfflineNotice />
       <NavigationContainer theme={NAV_THEME}>
-        <StatusBar style="dark" />
         <Tab.Navigator
           screenOptions={{
             headerShown: false,

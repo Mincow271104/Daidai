@@ -23,6 +23,7 @@ import { useScrollLockStore } from '../store/scrollLockStore';
 import { processAudio, analyzeText } from '../services/api';
 import { insertVocabulary, termExists } from '../database/repository';
 import { scheduleEveningQuest, scheduleMorningPhrase } from '../services/notifications';
+import { ensureOnline } from '../services/network';
 import { getRandomPhrase } from '../constants/phrases';
 import { getField } from '../constants/fields';
 import { speakChinese } from '../utils/speak';
@@ -147,6 +148,11 @@ export function HomeScreen() {
         setMascotState('confused', 'Ngắn quá, sư phụ nói dài hơn chút nhé.');
         return;
       }
+      const online = await ensureOnline('Phân tích giọng nói');
+      if (!online) {
+        setMascotState('idle', getRandomPhrase('idle'));
+        return;
+      }
       setIsProcessing(true);
       setPendingItems(null);
       setMascotState('processing', getRandomPhrase('processing'));
@@ -215,6 +221,8 @@ export function HomeScreen() {
   const handlePasteSubmit = useCallback(async () => {
     const text = pasteText.trim();
     if (!text) return;
+    const online = await ensureOnline('Phân tích câu');
+    if (!online) return;
     setIsProcessing(true);
     setNewlyAdded([]);
     setPendingItems(null);
