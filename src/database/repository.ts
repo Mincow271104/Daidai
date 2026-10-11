@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { normalizeSearchText, levenshteinDistance, cleanChineseText } from '../utils/similarity';
 import { Topic, registerTopics, DEFAULT_TOPICS } from '../constants/topics';
+import { Field, setCustomFieldsCache } from '../constants/fields';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -1191,14 +1192,28 @@ export async function purgePollutedConversationCache(): Promise<void> {
 
 // ─── Quản lý Chủ đề người dùng (User Topics) ──────────────────────
 
-export async function getUserTopics(): Promise<Topic[]> {
+export async function getUserTopics(scope?: 'communication' | 'domain'): Promise<Topic[]> {
   const db = await getReadyDatabase();
-  const rows = await db.getAllAsync<any>(
-    `SELECT * FROM user_topics ORDER BY is_default DESC, created_at ASC`
-  );
+  let query = `SELECT * FROM user_topics `;
+
+  if (scope === 'domain') {
+    // Chỉ trả về các chủ đề thuộc Chuyên ngành (scope = 'domain')
+    // Tuyệt đối không trả về các chủ đề mặc định của Giao tiếp
+    query += `WHERE scope = 'domain' ORDER BY created_at ASC`;
+  } else if (scope === 'communication') {
+    // Trả về các chủ đề Giao tiếp (mặc định + do người dùng tạo cho communication)
+    query += `WHERE (scope = 'communication' OR is_default = 1) ORDER BY is_default DESC, created_at ASC`;
+  } else {
+    query += `ORDER BY is_default DESC, created_at ASC`;
+  }
+
+  const rows = await db.getAllAsync<any>(query);
   if (!rows || rows.length === 0) {
-    registerTopics(DEFAULT_TOPICS);
-    return DEFAULT_TOPICS;
+    if (scope === 'communication' || !scope) {
+      registerTopics(DEFAULT_TOPICS);
+      return DEFAULT_TOPICS;
+    }
+    return [];
   }
   const topics: Topic[] = rows.map((r) => ({
     id: r.id,
@@ -1206,20 +1221,25 @@ export async function getUserTopics(): Promise<Topic[]> {
     label: r.label,
     icon: r.icon ?? undefined,
     is_default: r.is_default === 1,
+    scope: (r.scope as 'communication' | 'domain') || (r.is_default === 1 ? 'communication' : 'domain'),
   }));
   registerTopics(topics);
   return topics;
 }
 
-export async function createUserTopic(label: string, icon?: string): Promise<Topic> {
+export async function createUserTopic(
+  label: string,
+  icon?: string,
+  scope: 'communication' | 'domain' = 'communication'
+): Promise<Topic> {
   const db = await getReadyDatabase();
   const cleanLabel = label.trim();
   if (!cleanLabel) throw new Error('Tên chủ đề không được để trống');
 
-  // Kiểm tra trùng tên
+  // Kiểm tra trùng tên trong cùng scope
   const existing = await db.getFirstAsync<any>(
-    `SELECT * FROM user_topics WHERE LOWER(label) = LOWER(?);`,
-    [cleanLabel]
+    `SELECT * FROM user_topics WHERE LOWER(label) = LOWER(?) AND (scope = ? OR (scope IS NULL AND ? = 'communication'));`,
+    [cleanLabel, scope, scope]
   );
   if (existing) {
     const existingTopic: Topic = {
@@ -1228,6 +1248,7 @@ export async function createUserTopic(label: string, icon?: string): Promise<Top
       label: existing.label,
       icon: existing.icon ?? undefined,
       is_default: existing.is_default === 1,
+      scope: (existing.scope as 'communication' | 'domain') || scope,
     };
     registerTopics([existingTopic]);
     return existingTopic;
@@ -1239,9 +1260,9 @@ export async function createUserTopic(label: string, icon?: string): Promise<Top
   const now = Date.now();
 
   await db.runAsync(
-    `INSERT INTO user_topics (id, key, label, icon, is_default, created_at)
-     VALUES (?, ?, ?, ?, 0, ?);`,
-    [id, key, cleanLabel, icon || null, now]
+    `INSERT INTO user_topics (id, key, label, icon, is_default, created_at, scope)
+     VALUES (?, ?, ?, ?, 0, ?, ?);`,
+    [id, key, cleanLabel, icon || null, now, scope]
   );
 
   const newTopic: Topic = {
@@ -1250,8 +1271,53 @@ export async function createUserTopic(label: string, icon?: string): Promise<Top
     label: cleanLabel,
     icon: icon || undefined,
     is_default: false,
+    scope,
   };
 
+  registerTopics([newTopic]);
+  return newTopic;
+}
+
+/** Tự động bảo đảm có chủ đề chuyên ngành tương ứng với tên ngành nghề */
+export async function ensureFieldTopic(fieldKey: string, fieldLabel: string): Promise<Topic> {
+  const db = await getReadyDatabase();
+  const cleanKey = fieldKey.trim().toLowerCase();
+  const cleanLabel = fieldLabel.trim();
+
+  // Kiểm tra đã có chủ đề theo key hoặc theo tên trong domain chưa
+  const existing = await db.getFirstAsync<any>(
+    `SELECT * FROM user_topics WHERE (LOWER(key) = LOWER(?) OR LOWER(label) = LOWER(?)) AND scope = 'domain';`,
+    [cleanKey, cleanLabel]
+  );
+
+  if (existing) {
+    const topic: Topic = {
+      id: existing.id,
+      key: existing.key,
+      label: existing.label,
+      icon: existing.icon ?? undefined,
+      is_default: false,
+      scope: 'domain',
+    };
+    registerTopics([topic]);
+    return topic;
+  }
+
+  const id = uuidv4();
+  const now = Date.now();
+  await db.runAsync(
+    `INSERT INTO user_topics (id, key, label, icon, is_default, created_at, scope)
+     VALUES (?, ?, ?, null, 0, ?, 'domain');`,
+    [id, cleanKey, cleanLabel, now]
+  );
+
+  const newTopic: Topic = {
+    id,
+    key: cleanKey,
+    label: cleanLabel,
+    is_default: false,
+    scope: 'domain',
+  };
   registerTopics([newTopic]);
   return newTopic;
 }
@@ -1277,4 +1343,89 @@ export async function updateVocabularyTopic(vocabId: string, topicKey: string): 
     `UPDATE vocabulary SET topic = ? WHERE id = ?;`,
     [topicKey || 'other', vocabId]
   );
+}
+
+export async function updateVocabularyTopicAndScope(
+  vocabId: string,
+  topicKey: string,
+  newScope: 'communication' | 'domain'
+): Promise<void> {
+  const db = await getReadyDatabase();
+  await db.runAsync(
+    `UPDATE vocabulary SET topic = ?, scope = ? WHERE id = ?;`,
+    [topicKey || (newScope === 'communication' ? 'other' : topicKey), newScope, vocabId]
+  );
+}
+
+// ─── Quản lý Ngành nghề tự tạo & Ghim yêu thích (Custom & Pinned Fields) ─────
+
+export async function getUserCustomFields(): Promise<Field[]> {
+  const raw = await getSetting('user_custom_fields');
+  if (!raw) return [];
+  try {
+    const list = JSON.parse(raw);
+    if (Array.isArray(list)) {
+      setCustomFieldsCache(list);
+      return list;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export async function addUserCustomField(label: string): Promise<Field> {
+  const cleanLabel = label.trim();
+  if (!cleanLabel) throw new Error('Tên ngành không được để trống');
+  const current = await getUserCustomFields();
+
+  // Kiểm tra trùng
+  const found = current.find((f) => f.label.toLowerCase() === cleanLabel.toLowerCase());
+  if (found) return found;
+
+  const normKey = normalizeSearchText(cleanLabel).replace(/[^a-z0-9]/g, '_').slice(0, 15);
+  const key = `cf_${normKey || 'field'}_${Date.now().toString(36)}`;
+  const newField: Field = {
+    key,
+    label: cleanLabel,
+    prompt: `${cleanLabel} industry, professional and daily terms in ${cleanLabel}`,
+  };
+
+  const updated = [...current, newField];
+  await setSetting('user_custom_fields', JSON.stringify(updated));
+  setCustomFieldsCache(updated);
+
+  // Tự động tạo chủ đề Chuyên ngành tương ứng
+  await ensureFieldTopic(key, cleanLabel);
+
+  return newField;
+}
+
+export async function getPinnedFields(): Promise<string[]> {
+  const raw = await getSetting('pinned_fields');
+  if (!raw) return [];
+  try {
+    const list = JSON.parse(raw);
+    if (Array.isArray(list)) return list;
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export async function togglePinField(fieldKey: string): Promise<boolean> {
+  const pinned = await getPinnedFields();
+  let updated: string[];
+  let isPinnedNow = false;
+
+  if (pinned.includes(fieldKey)) {
+    updated = pinned.filter((k) => k !== fieldKey);
+    isPinnedNow = false;
+  } else {
+    updated = [fieldKey, ...pinned];
+    isPinnedNow = true;
+  }
+
+  await setSetting('pinned_fields', JSON.stringify(updated));
+  return isPinnedNow;
 }

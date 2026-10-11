@@ -149,7 +149,8 @@ async function doInitDatabase(): Promise<void> {
       label TEXT NOT NULL,
       icon TEXT,
       is_default INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL
+      created_at INTEGER NOT NULL,
+      scope TEXT DEFAULT 'communication'
     );
 
     CREATE INDEX IF NOT EXISTS idx_vocab_captured ON vocabulary(captured_at DESC);
@@ -162,6 +163,7 @@ async function doInitDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_offline_phrases_norm ON offline_phrases(normalized_vi);
     CREATE INDEX IF NOT EXISTS idx_offline_phrases_cat ON offline_phrases(category);
     CREATE INDEX IF NOT EXISTS idx_user_topics_created ON user_topics(created_at ASC);
+    CREATE INDEX IF NOT EXISTS idx_user_topics_scope ON user_topics(scope);
   `);
 
   // Migration an toàn cho DB cũ: kiểm tra và thêm các cột nếu chưa có TRƯỚC KHI tạo index trên cột đó
@@ -224,6 +226,21 @@ async function doInitDatabase(): Promise<void> {
     console.warn('Migration conversation_messages error:', err);
   }
 
+  // Migration user_topics: thêm cột scope nếu chưa có
+  try {
+    const topicInfo = await database.getAllAsync<{ name: string }>(
+      `PRAGMA table_info(user_topics);`
+    );
+    const topicCols = new Set(topicInfo.map((col) => col.name));
+    if (!topicCols.has('scope')) {
+      await database.runAsync(`ALTER TABLE user_topics ADD COLUMN scope TEXT DEFAULT 'communication';`);
+    }
+    // Đảm bảo tất cả chủ đề mặc định luôn có scope là communication
+    await database.runAsync(`UPDATE user_topics SET scope = 'communication' WHERE is_default = 1;`);
+  } catch (err) {
+    console.warn('Migration user_topics error:', err);
+  }
+
   // Dọn dẹp cache AI quá hạn 90 ngày và xóa cache đối thoại cũ để đảm bảo AI dịch mới chuẩn xác
   try {
     const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
@@ -253,12 +270,12 @@ async function doInitDatabase(): Promise<void> {
     `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('gemini_keys', '')`,
   );
 
-  // Khởi tạo các chủ đề mặc định trong bảng user_topics (chủ đề "Khác" là mặc định)
+  // Khởi tạo các chủ đề mặc định trong bảng user_topics (chủ đề "Khác" là mặc định, scope 'communication')
   try {
     for (const t of DEFAULT_TOPICS) {
       await database.runAsync(
-        `INSERT OR IGNORE INTO user_topics (id, key, label, icon, is_default, created_at)
-         VALUES (?, ?, ?, ?, 1, ?);`,
+        `INSERT OR IGNORE INTO user_topics (id, key, label, icon, is_default, created_at, scope)
+         VALUES (?, ?, ?, ?, 1, ?, 'communication');`,
         [`default_${t.key}`, t.key, t.label, t.icon || null, 1700000000000]
       );
     }

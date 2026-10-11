@@ -4,20 +4,21 @@ export interface Topic {
   label: string;
   icon?: string;
   is_default?: boolean;
+  scope?: 'communication' | 'domain';
 }
 
 export type TopicItem = Topic;
 
 export const DEFAULT_TOPICS: Topic[] = [
-  { key: 'other', label: 'Khác', is_default: true },
-  { key: 'work', label: 'Công sở', is_default: true },
-  { key: 'daily', label: 'Đời sống', is_default: true },
-  { key: 'food', label: 'Ăn uống', is_default: true },
-  { key: 'shopping', label: 'Mua sắm', is_default: true },
-  { key: 'travel', label: 'Di chuyển & hỏi đường', is_default: true },
-  { key: 'greeting', label: 'Chào hỏi', is_default: true },
-  { key: 'feelings', label: 'Cảm xúc', is_default: true },
-  { key: 'health', label: 'Sức khỏe', is_default: true },
+  { key: 'other', label: 'Khác', is_default: true, scope: 'communication' },
+  { key: 'work', label: 'Công sở', is_default: true, scope: 'communication' },
+  { key: 'daily', label: 'Đời sống', is_default: true, scope: 'communication' },
+  { key: 'food', label: 'Ăn uống', is_default: true, scope: 'communication' },
+  { key: 'shopping', label: 'Mua sắm', is_default: true, scope: 'communication' },
+  { key: 'travel', label: 'Di chuyển & hỏi đường', is_default: true, scope: 'communication' },
+  { key: 'greeting', label: 'Chào hỏi', is_default: true, scope: 'communication' },
+  { key: 'feelings', label: 'Cảm xúc', is_default: true, scope: 'communication' },
+  { key: 'health', label: 'Sức khỏe', is_default: true, scope: 'communication' },
 ];
 
 export const TOPICS: Topic[] = DEFAULT_TOPICS;

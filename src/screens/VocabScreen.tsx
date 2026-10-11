@@ -18,12 +18,14 @@ import {
 } from '../database/repository';
 import { Topic, TOPICS } from '../constants/topics';
 import { TopicPickerModal } from '../components/TopicPickerModal';
+import { MoveTopicModal } from '../components/MoveTopicModal';
 import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
 import { VocabularyItem } from '../types';
 import { useScrollLockStore } from '../store/scrollLockStore';
 
 export function VocabScreen() {
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [movingItem, setMovingItem] = useState<VocabularyItem | null>(null);
   const isScrollLocked = useScrollLockStore((s) => s.isScrollLocked);
   const isFocused = useIsFocused();
   // Tab mặc định: 'communication'
@@ -42,7 +44,7 @@ export function VocabScreen() {
     try {
       const vocabList = await getAllVocabulary(activeTab);
       const vocabStats = await getTotalStats(activeTab);
-      const userTopics = await getUserTopics();
+      const userTopics = await getUserTopics(activeTab);
       setItems(vocabList);
       setStats(vocabStats);
       setTopics(userTopics);
@@ -128,18 +130,31 @@ export function VocabScreen() {
 
             <View style={styles.actionsRow}>
               <Pressable
+                style={styles.iconBtn}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setMovingItem(item);
+                }}
+                hitSlop={8}
+              >
+                <Feather name="folder" size={16} color="#475569" />
+              </Pressable>
+
+              <Pressable
                 style={[styles.iconBtn, item.is_favorite === 1 && styles.iconBtnFavorited]}
                 onPress={() => handleToggleFavorite(item.id)}
+                hitSlop={8}
               >
                 <Feather
                   name="bookmark"
                   size={16}
-                  color={item.is_favorite === 1 ? '#D97706' : '#94A3B8'}
+                  color={item.is_favorite === 1 ? '#475569' : '#94A3B8'}
                 />
               </Pressable>
               <Pressable
                 style={styles.iconBtn}
                 onPress={() => handleDelete(item.id)}
+                hitSlop={8}
               >
                 <Feather name="trash-2" size={16} color="#94A3B8" />
               </Pressable>
@@ -183,7 +198,7 @@ export function VocabScreen() {
           <Feather
             name="message-circle"
             size={16}
-            color={activeTab === 'communication' ? '#6366F1' : '#64748B'}
+            color={activeTab === 'communication' ? '#0F172A' : '#64748B'}
           />
           <Text style={[styles.topTabText, activeTab === 'communication' && styles.topTabTextActive]}>
             Giao tiếp
@@ -197,7 +212,7 @@ export function VocabScreen() {
           <Feather
             name="briefcase"
             size={16}
-            color={activeTab === 'domain' ? '#6366F1' : '#64748B'}
+            color={activeTab === 'domain' ? '#0F172A' : '#64748B'}
           />
           <Text style={[styles.topTabText, activeTab === 'domain' && styles.topTabTextActive]}>
             Chuyên ngành
@@ -218,14 +233,14 @@ export function VocabScreen() {
           style={[styles.statBox, filter === 'mastered' && styles.statBoxActive]}
           onPress={() => setFilter('mastered')}
         >
-          <Text style={[styles.statNumber, { color: '#059669' }]}>{stats.mastered}</Text>
+          <Text style={[styles.statNumber, { color: '#0F172A' }]}>{stats.mastered}</Text>
           <Text style={styles.statLabel}>Đã thuộc</Text>
         </Pressable>
         <Pressable
           style={[styles.statBox, filter === 'due' && styles.statBoxActive]}
           onPress={() => setFilter('due')}
         >
-          <Text style={[styles.statNumber, { color: '#D97706' }]}>{stats.due}</Text>
+          <Text style={[styles.statNumber, { color: '#475569' }]}>{stats.due}</Text>
           <Text style={styles.statLabel}>Cần ôn</Text>
         </Pressable>
       </View>
@@ -245,7 +260,7 @@ export function VocabScreen() {
               setShowTopicManageModal(true);
             }}
           >
-            <Feather name="plus" size={13} color="#6366F1" />
+            <Feather name="plus" size={13} color="#0F172A" />
             <Text style={styles.createTopicChipText}>Tạo chủ đề</Text>
           </Pressable>
 
@@ -359,6 +374,7 @@ export function VocabScreen() {
       <TopicPickerModal
         visible={showTopicManageModal}
         selectedTopicKey={selectedTopic}
+        scope={activeTab}
         onSelectTopic={(key) => {
           setSelectedTopic(key);
           loadData();
@@ -367,7 +383,15 @@ export function VocabScreen() {
           setShowTopicManageModal(false);
           loadData();
         }}
-        title="Quản lý & Tạo chủ đề"
+        title={`Quản lý & Tạo chủ đề (${activeTab === 'domain' ? 'Chuyên ngành' : 'Giao tiếp'})`}
+      />
+
+      {/* Modal Di chuyển từ vựng giữa các chủ đề & tab */}
+      <MoveTopicModal
+        visible={!!movingItem}
+        item={movingItem}
+        onClose={() => setMovingItem(null)}
+        onSuccess={() => loadData()}
       />
 
       <ApiKeySettingsModal
@@ -419,15 +443,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   totalBadge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F1F5F9',
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: '#E2E8F0',
   },
   totalBadgeText: {
-    color: '#4F46E5',
+    color: '#0F172A',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -463,7 +487,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   topTabTextActive: {
-    color: '#6366F1',
+    color: '#0F172A',
     fontWeight: '800',
   },
   statsRow: {
@@ -482,8 +506,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   statBoxActive: {
-    borderColor: '#6366F1',
-    backgroundColor: '#F5F3FF',
+    borderColor: '#0F172A',
+    backgroundColor: '#F8FAFC',
   },
   statNumber: { color: '#0F172A', fontSize: 18, fontWeight: '800' },
   statLabel: { color: '#64748B', fontSize: 11, marginTop: 2, textAlign: 'center', fontWeight: '600' },
@@ -501,12 +525,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: '#CBD5E1',
   },
   createTopicChipText: {
-    color: '#6366F1',
+    color: '#0F172A',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -522,18 +546,18 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   topicChipActive: {
-    backgroundColor: '#6366F1',
-    borderColor: '#6366F1',
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
   },
   topicChipCustom: {
-    borderColor: '#FDE68A',
-    backgroundColor: '#FFFBEB',
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
   },
   customDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#D97706',
+    backgroundColor: '#64748B',
   },
   customDotActive: {
     backgroundColor: '#FFFFFF',
@@ -582,10 +606,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   dotMastered: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#0F172A',
   },
   dotDue: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#94A3B8',
   },
   statusText: {
     color: '#64748B',
@@ -602,6 +626,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   iconBtnFavorited: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F1F5F9',
   },
 });

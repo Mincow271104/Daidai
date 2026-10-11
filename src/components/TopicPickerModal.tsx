@@ -24,6 +24,7 @@ interface TopicPickerModalProps {
   onClose: () => void;
   aiSuggestedTopicKey?: string;
   title?: string;
+  scope?: 'communication' | 'domain';
 }
 
 export function TopicPickerModal({
@@ -33,6 +34,7 @@ export function TopicPickerModal({
   onClose,
   aiSuggestedTopicKey,
   title = 'Chọn chủ đề lưu kho',
+  scope,
 }: TopicPickerModalProps) {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +44,7 @@ export function TopicPickerModal({
   const loadTopicsList = async () => {
     setIsLoading(true);
     try {
-      const list = await getUserTopics();
+      const list = await getUserTopics(scope);
       setTopics(list);
     } catch (e) {
       console.warn('loadTopicsList error:', e);
@@ -56,7 +58,7 @@ export function TopicPickerModal({
       loadTopicsList();
       setNewLabel('');
     }
-  }, [visible]);
+  }, [visible, scope]);
 
   const handleSelect = (key: string) => {
     Haptics.selectionAsync();
@@ -73,7 +75,7 @@ export function TopicPickerModal({
     setIsSubmitting(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const created = await createUserTopic(trimmed);
+      const created = await createUserTopic(trimmed, undefined, scope);
       setNewLabel('');
       await loadTopicsList();
       onSelectTopic(created.key);
@@ -257,54 +259,56 @@ export function TopicPickerModal({
               )}
 
               {/* Mục Chủ đề mặc định */}
-              <View style={styles.section}>
-                <Text style={styles.sectionHeader}>Chủ đề cơ bản</Text>
-                {defaultTopics.map((topic) => {
-                  const isSelected = selectedTopicKey === topic.key;
-                  const isAiSuggested = aiSuggestedTopicKey === topic.key;
-                  return (
-                    <Pressable
-                      key={topic.key}
-                      style={[styles.topicItem, isSelected && styles.topicItemSelected]}
-                      onPress={() => handleSelect(topic.key)}
-                    >
-                      <View style={styles.topicItemLeft}>
-                        <View
-                          style={[
-                            styles.radioCircle,
-                            isSelected && styles.radioCircleSelected,
-                          ]}
-                        >
-                          {isSelected && <View style={styles.radioDot} />}
+              {defaultTopics.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionHeader}>Chủ đề cơ bản</Text>
+                  {defaultTopics.map((topic) => {
+                    const isSelected = selectedTopicKey === topic.key;
+                    const isAiSuggested = aiSuggestedTopicKey === topic.key;
+                    return (
+                      <Pressable
+                        key={topic.key}
+                        style={[styles.topicItem, isSelected && styles.topicItemSelected]}
+                        onPress={() => handleSelect(topic.key)}
+                      >
+                        <View style={styles.topicItemLeft}>
+                          <View
+                            style={[
+                              styles.radioCircle,
+                              isSelected && styles.radioCircleSelected,
+                            ]}
+                          >
+                            {isSelected && <View style={styles.radioDot} />}
+                          </View>
+                          <Text
+                            style={[
+                              styles.topicItemText,
+                              isSelected && styles.topicItemTextSelected,
+                            ]}
+                          >
+                            {topic.label}
+                          </Text>
+                          {topic.key === 'other' && (
+                            <View style={styles.defaultBadge}>
+                              <Text style={styles.defaultBadgeText}>Mặc định</Text>
+                            </View>
+                          )}
+                          {isAiSuggested && (
+                            <View style={styles.aiTagBadge}>
+                              <Feather name="zap" size={10} color="#475569" />
+                              <Text style={styles.aiTagBadgeText}>AI gợi ý</Text>
+                            </View>
+                          )}
                         </View>
-                        <Text
-                          style={[
-                            styles.topicItemText,
-                            isSelected && styles.topicItemTextSelected,
-                          ]}
-                        >
-                          {topic.label}
-                        </Text>
-                        {topic.key === 'other' && (
-                          <View style={styles.defaultBadge}>
-                            <Text style={styles.defaultBadgeText}>Mặc định</Text>
-                          </View>
-                        )}
-                        {isAiSuggested && (
-                          <View style={styles.aiTagBadge}>
-                            <Feather name="zap" size={10} color="#6366F1" />
-                            <Text style={styles.aiTagBadgeText}>AI gợi ý</Text>
-                          </View>
-                        )}
-                      </View>
 
-                      {isSelected && (
-                        <Feather name="check" size={16} color="#6366F1" />
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
+                        {isSelected && (
+                          <Feather name="check" size={16} color="#0F172A" />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
             </ScrollView>
           )}
         </View>

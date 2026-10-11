@@ -62,13 +62,13 @@ export function FlashCard({ item, compact = false, footer, onItemUpdated }: Flas
 
       {/* Chữ Trung Phồn thể kèm nút Loa phát âm (Hỗ trợ chạm/kéo tra từ trong kho) */}
       <View style={styles.twRow}>
-        {!compact && isSentence ? (
+        {!compact && item.tw_traditional ? (
           <View style={styles.twClickableBox}>
             <ClickableSentence
               sentence={item.tw_traditional}
               chunks={item.chunks}
               onPressWord={(w) => setSelectedWord(w)}
-              textStyle={styles.twSentence}
+              textStyle={isSentence ? styles.twSentence : styles.tw}
               highlightColor="#EEF2FF"
             />
           </View>

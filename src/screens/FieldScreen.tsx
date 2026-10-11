@@ -1,16 +1,32 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable,
-  ActivityIndicator, FlatList, Alert,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  FlatList,
+  Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useFieldStore } from '../store/fieldStore';
 import { useVocabularyStore } from '../store/vocabularyStore';
-import { FIELDS, getField } from '../constants/fields';
+import { FIELDS, getField, Field } from '../constants/fields';
 import { suggestTerms } from '../services/api';
-import { insertVocabulary, termExists } from '../database/repository';
+import {
+  insertVocabulary,
+  termExists,
+  ensureFieldTopic,
+  getUserCustomFields,
+  addUserCustomField,
+  getPinnedFields,
+  togglePinField,
+} from '../database/repository';
 import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
 import { ensureOnline } from '../services/network';
 import { AITerm } from '../types';
@@ -23,9 +39,47 @@ export function FieldScreen() {
   const [addedTerms, setAddedTerms] = useState<Set<string>>(new Set());
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
+  // Danh sách ngành nghề tùy biến & các ngành đã ghim
+  const [customFields, setCustomFields] = useState<Field[]>([]);
+  const [pinnedFieldKeys, setPinnedFieldKeys] = useState<string[]>([]);
+  const [showAddFieldModal, setShowAddFieldModal] = useState(false);
+  const [newFieldName, setNewFieldName] = useState('');
+  const [isAddingField, setIsAddingField] = useState(false);
+
+  const loadCustomAndPinned = useCallback(async () => {
+    try {
+      const [cFields, pKeys] = await Promise.all([
+        getUserCustomFields(),
+        getPinnedFields(),
+      ]);
+      setCustomFields(cFields);
+      setPinnedFieldKeys(pKeys);
+    } catch (e) {
+      console.warn('loadCustomAndPinned error:', e);
+    }
+  }, []);
+
   useEffect(() => {
     loadFieldStore();
-  }, []);
+    loadCustomAndPinned();
+  }, [loadFieldStore, loadCustomAndPinned]);
+
+  // Tổng hợp tất cả ngành (mặc định + người dùng tạo), sắp xếp ngành được ghim lên đầu
+  const allFields = useMemo(() => {
+    const combined = [...FIELDS, ...customFields];
+    const pinnedSet = new Set(pinnedFieldKeys);
+    return combined.sort((a, b) => {
+      const aPinned = pinnedSet.has(a.key);
+      const bPinned = pinnedSet.has(b.key);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+  }, [customFields, pinnedFieldKeys]);
+
+  const currentFieldObj = useMemo(() => {
+    return getField(field, customFields);
+  }, [field, customFields]);
 
   const loadSuggestions = useCallback(async (fieldKey: string) => {
     const online = await ensureOnline('Gợi ý thuật ngữ');
@@ -33,26 +87,39 @@ export function FieldScreen() {
     setLoading(true);
     try {
       const existing = vocabulary.map((v) => v.original_term);
-      const res = await suggestTerms(fieldKey, existing, 8);
+      const fObj = getField(fieldKey, customFields);
+      const res = await suggestTerms(fieldKey, existing, 8, fObj.prompt || fObj.label);
       setSuggestions(res);
     } catch (e: any) {
-      Alert.alert('Thông báo', e.message || 'Không thể tải từ gợi ý');
+      Alert.alert('Thông báo', e?.message || 'Không thể tải từ gợi ý');
     } finally {
       setLoading(false);
     }
-  }, [vocabulary]);
+  }, [vocabulary, customFields]);
 
   // Tải gợi ý khi đổi ngành
   useEffect(() => {
     if (field) {
       loadSuggestions(field);
     }
-  }, [field]);
+  }, [field, loadSuggestions]);
 
   const handleSelectField = async (key: string) => {
     if (key === field) return;
     Haptics.selectionAsync();
     await setField(key);
+  };
+
+  const handleTogglePin = async (key: string, e: any) => {
+    e?.stopPropagation?.();
+    Haptics.selectionAsync();
+    try {
+      await togglePinField(key);
+      const updatedKeys = await getPinnedFields();
+      setPinnedFieldKeys(updatedKeys);
+    } catch (err: any) {
+      console.warn('togglePinField error:', err);
+    }
   };
 
   const handleAddTerm = async (term: AITerm) => {
@@ -63,6 +130,9 @@ export function FieldScreen() {
         return;
       }
 
+      // Tự động tạo chủ đề Chuyên ngành bên Kho từ theo tên ngành hiện tại
+      await ensureFieldTopic(field, currentFieldObj.label);
+
       await insertVocabulary({
         original_term: term.original_term,
         tw_term: term.tw_traditional,
@@ -70,11 +140,11 @@ export function FieldScreen() {
         pinyin: term.pinyin,
         vi: term.vi,
         category: field,
-        context_sentence: `Thuật ngữ chuyên ngành ${getField(field).label}`,
+        context_sentence: `Thuật ngữ chuyên ngành ${currentFieldObj.label}`,
         source: 'suggestion',
         scope: 'domain',
         kind: 'term',
-        topic: 'work',
+        topic: field,
       });
 
       setAddedTerms((prev) => new Set(prev).add(term.original_term.toLowerCase()));
@@ -82,7 +152,25 @@ export function FieldScreen() {
       await loadStats();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert('Lỗi', e.message || 'Không thể thêm từ');
+      Alert.alert('Lỗi', e?.message || 'Không thể thêm từ');
+    }
+  };
+
+  const handleCreateCustomField = async () => {
+    const clean = newFieldName.trim();
+    if (!clean) return;
+    setIsAddingField(true);
+    try {
+      const created = await addUserCustomField(clean);
+      await loadCustomAndPinned();
+      await setField(created.key);
+      setShowAddFieldModal(false);
+      setNewFieldName('');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert('Lỗi', err?.message || 'Không thể thêm chuyên ngành');
+    } finally {
+      setIsAddingField(false);
     }
   };
 
@@ -108,21 +196,48 @@ export function FieldScreen() {
         </Pressable>
       </View>
 
-      {/* Danh sách ngành nghề cuộn ngang */}
+      {/* Danh sách ngành nghề cuộn ngang kèm icon sao ghim không màu */}
       <View style={styles.chipsContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipsScroll}
         >
-          {FIELDS.map((f) => {
+          {/* Nút Thêm ngành */}
+          <Pressable
+            style={styles.addSectorChip}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setNewFieldName('');
+              setShowAddFieldModal(true);
+            }}
+          >
+            <Feather name="plus" size={13} color="#0F172A" />
+            <Text style={styles.addSectorChipText}>Thêm ngành</Text>
+          </Pressable>
+
+          {allFields.map((f) => {
             const active = f.key === field;
+            const isPinned = pinnedFieldKeys.includes(f.key);
+
             return (
               <Pressable
                 key={f.key}
                 style={[styles.chip, active && styles.chipActive]}
                 onPress={() => handleSelectField(f.key)}
               >
+                {/* Icon sao không màu: đen/xám đơn sắc */}
+                <Pressable
+                  style={styles.starBtn}
+                  onPress={(e) => handleTogglePin(f.key, e)}
+                  hitSlop={6}
+                >
+                  <FontAwesome
+                    name={isPinned ? 'star' : 'star-o'}
+                    size={13}
+                    color={active ? '#FFFFFF' : isPinned ? '#0F172A' : '#94A3B8'}
+                  />
+                </Pressable>
                 <Text style={[styles.chipText, active && styles.chipTextActive]}>
                   {f.label}
                 </Text>
@@ -137,7 +252,7 @@ export function FieldScreen() {
         <View style={styles.sectionTitleCol}>
           <Text style={styles.sectionSuperTitle}>Thuật ngữ gợi ý</Text>
           <Text style={styles.sectionFieldLabel} numberOfLines={1} ellipsizeMode="tail">
-            {getField(field).label}
+            {currentFieldObj.label}
           </Text>
         </View>
         <Pressable
@@ -146,14 +261,14 @@ export function FieldScreen() {
           disabled={loading}
           hitSlop={6}
         >
-          <Feather name="refresh-cw" size={13} color="#6366F1" />
+          <Feather name="refresh-cw" size={12} color="#0F172A" />
           <Text style={styles.refreshText}>Lấy từ khác</Text>
         </Pressable>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#6366F1" size="large" />
+          <ActivityIndicator color="#0F172A" size="large" />
           <Text style={styles.loadingText}>Đang tìm thuật ngữ tiêu biểu...</Text>
         </View>
       ) : (
@@ -180,8 +295,8 @@ export function FieldScreen() {
                 >
                   <Feather
                     name={added ? 'check' : 'plus'}
-                    size={16}
-                    color={added ? '#059669' : '#FFFFFF'}
+                    size={14}
+                    color={added ? '#475569' : '#FFFFFF'}
                   />
                   <Text style={[styles.addBtnText, added && styles.addBtnTextDisabled]}>
                     {added ? 'Đã lưu' : 'Lưu từ'}
@@ -197,6 +312,59 @@ export function FieldScreen() {
           }
         />
       )}
+
+      {/* Modal Thêm chuyên ngành mới */}
+      <Modal
+        visible={showAddFieldModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddFieldModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowAddFieldModal(false)} />
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Thêm chuyên ngành mới</Text>
+              <Pressable onPress={() => setShowAddFieldModal(false)} hitSlop={8}>
+                <Feather name="x" size={16} color="#475569" />
+              </Pressable>
+            </View>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Nhập tên ngành (vd: Cơ khí, Y tế, Xây dựng...)"
+              placeholderTextColor="#94A3B8"
+              value={newFieldName}
+              onChangeText={setNewFieldName}
+              autoFocus
+            />
+
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={styles.modalCancelBtn}
+                onPress={() => setShowAddFieldModal(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>Hủy</Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.modalConfirmBtn,
+                  (!newFieldName.trim() || isAddingField) && styles.btnDisabled,
+                ]}
+                onPress={handleCreateCustomField}
+                disabled={!newFieldName.trim() || isAddingField}
+              >
+                {isAddingField ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmBtnText}>Thêm ngành</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <ApiKeySettingsModal
         visible={settingsModalVisible}
@@ -232,32 +400,50 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     letterSpacing: 0.3,
   },
-  screenSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-    fontWeight: '500',
-  },
   chipsContainer: {
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
   chipsScroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     gap: 8,
   },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  addSectorChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  addSectorChipText: {
+    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   chipActive: {
-    backgroundColor: '#6366F1',
-    borderColor: '#6366F1',
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  starBtn: {
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chipText: {
     color: '#475569',
@@ -271,7 +457,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 8,
     gap: 8,
@@ -296,20 +482,22 @@ const styles = StyleSheet.create({
   refreshBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     flexShrink: 0,
-    paddingVertical: 5,
+    paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   refreshText: {
-    color: '#6366F1',
+    color: '#0F172A',
     fontSize: 12,
     fontWeight: '700',
   },
   list: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 24,
     paddingTop: 4,
     gap: 10,
@@ -319,9 +507,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   cardInfo: {
@@ -330,7 +518,7 @@ const styles = StyleSheet.create({
   },
   termEn: {
     color: '#64748B',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   termTw: {
@@ -340,13 +528,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   termPinyin: {
-    color: '#6366F1',
+    color: '#475569',
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
   },
   termVi: {
-    color: '#475569',
+    color: '#334155',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
@@ -355,15 +543,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#6366F1',
+    backgroundColor: '#0F172A',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   addBtnDisabled: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#E2E8F0',
   },
   addBtnText: {
     color: '#FFFFFF',
@@ -371,7 +559,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   addBtnTextDisabled: {
-    color: '#059669',
+    color: '#475569',
   },
   center: {
     flex: 1,
@@ -389,5 +577,83 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 14,
     fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFill,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalInput: {
+    height: 42,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 12,
+    fontSize: 13,
+    color: '#0F172A',
+    marginBottom: 14,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  modalCancelBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  modalCancelBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  modalConfirmBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  btnDisabled: {
+    opacity: 0.4,
   },
 });

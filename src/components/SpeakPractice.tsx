@@ -40,7 +40,7 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
   const evaluateAudio = useCallback(async (uri: string) => {
     setIsProcessing(true);
     try {
-      const res = await transcribeSpeech(uri, 'zh');
+      const res = await transcribeSpeech(uri, 'zh', undefined, targetSentence);
 
       if (!res || !res.text) {
         setErrorMessage('Không nhận diện được giọng nói. Hãy đọc to, rõ hơn và thử lại nhé!');

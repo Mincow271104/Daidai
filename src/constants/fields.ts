@@ -21,6 +21,15 @@ export const FIELDS: Field[] = [
 
 export const DEFAULT_FIELD = 'daily';
 
-export function getField(key: string): Field {
-  return FIELDS.find((f) => f.key === key) ?? FIELDS[0];
+let customFieldsCache: Field[] = [];
+
+export function setCustomFieldsCache(fields: Field[]): void {
+  customFieldsCache = fields;
+}
+
+export function getField(key: string, customFields?: Field[]): Field {
+  const list = customFields || customFieldsCache;
+  const found = FIELDS.find((f) => f.key === key) || list.find((f) => f.key === key);
+  if (found) return found;
+  return { key, label: key, prompt: key };
 }
