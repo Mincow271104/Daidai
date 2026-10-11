@@ -208,6 +208,7 @@ async def transcribe(
     audio: UploadFile = File(...),
     language: Optional[str] = Form(None),
     field: Optional[str] = Form(None),
+    duration_ms: Optional[float] = Form(None),
 ):
     global whisper_model, active_device, active_compute_type
     if not whisper_model:
@@ -222,6 +223,7 @@ async def transcribe(
     try:
         lang_code = language.strip().lower() if language else ""
         selected_field = (field or "it").strip().lower()
+        is_short = (duration_ms is not None and duration_ms > 0 and duration_ms <= 1800)
 
         transcribe_args = {
             "vad_filter": True,
@@ -244,7 +246,7 @@ async def transcribe(
         if lang_code == "zh":
             transcribe_args["language"] = "zh"
             # Định hướng ký tự Phồn thể chuẩn Đài Loan mà không mớm bất kỳ từ vựng cụ thể nào
-            transcribe_args["initial_prompt"] = "繁體中文，臺灣腔調。"
+            transcribe_args["initial_prompt"] = "繁體中文，臺灣常用詞彙，單字片語，國語。" if is_short else "繁體中文，臺灣腔調。"
         elif lang_code == "vi":
             transcribe_args["language"] = "vi"
             transcribe_args["initial_prompt"] = "Tiếng Việt chuẩn xác。"
@@ -253,7 +255,7 @@ async def transcribe(
             transcribe_args["initial_prompt"] = "Conversational English."
         else:
             # Chế độ tự động nhận diện ngôn ngữ trung lập, không định kiến từ vựng
-            transcribe_args["initial_prompt"] = "繁體中文，臺灣，Tiếng Việt, English。"
+            transcribe_args["initial_prompt"] = "繁體中文，臺灣詞彙，Tiếng Việt, English。" if is_short else "繁體中文，臺灣，Tiếng Việt, English。"
 
         def extract_clean_text(segs):
             valid_parts = []

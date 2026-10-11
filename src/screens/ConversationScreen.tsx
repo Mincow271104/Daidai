@@ -270,7 +270,7 @@ export function ConversationScreen() {
       // tránh ép cứng khiến Whisper bị ảo giác lặp từ hoặc sai lệch ngữ âm.
       const targetLang = undefined;
 
-      const transcribeRes = await transcribeSpeech(uri, targetLang, field);
+      const transcribeRes = await transcribeSpeech(uri, targetLang, field, durationMs);
       if (transcribeRes?.text) {
         spokenText = transcribeRes.text.trim();
         source = transcribeRes.source;

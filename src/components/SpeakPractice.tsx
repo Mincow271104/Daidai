@@ -37,7 +37,7 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
     speakChinese(targetSentence);
   };
 
-  const evaluateAudio = useCallback(async (uri: string, hasSpokenHint?: boolean) => {
+  const evaluateAudio = useCallback(async (uri: string, hasSpokenHint?: boolean, durationMs?: number) => {
     // 1. Kiểm tra phát hiện giọng nói từ microphone VAD metering
     // Nếu mic không ghi nhận âm thanh nào đạt ngưỡng nói (im lặng) -> Báo lỗi 0% ngay lập tức
     if (hasSpokenHint === false) {
@@ -71,7 +71,8 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
 
     try {
       // 2. Nhận diện nguyên văn âm thanh người dùng nói (không mớm câu mẫu, chống hallucinate 100%)
-      const res = await transcribeSpeech(uri, 'zh');
+      const isShort = (typeof durationMs === 'number' && durationMs > 0 && durationMs <= 1800) || targetSentence.length <= 4;
+      const res = await transcribeSpeech(uri, 'zh', undefined, isShort ? 1000 : 3000);
 
       if (!res || !res.text || !res.text.trim()) {
         setErrorMessage('Không nhận diện được giọng nói. Hãy đọc to, rõ hơn và thử lại nhé!');
@@ -131,7 +132,7 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
     silenceTimeoutMs: 1500,
     onAutoStop: ({ uri, durationMs, hasSpoken }) => {
       if (uri && durationMs >= 500) {
-        evaluateAudio(uri, hasSpoken);
+        evaluateAudio(uri, hasSpoken, durationMs);
       }
     },
   });
@@ -149,7 +150,7 @@ export function SpeakPractice({ targetSentence, targetPinyin, title, onClose }: 
     } else {
       const { uri, durationMs, hasSpoken } = await stopRecording();
       if (uri && durationMs >= 500) {
-        await evaluateAudio(uri, hasSpoken);
+        await evaluateAudio(uri, hasSpoken, durationMs);
       }
     }
   }, [isProcessing, isRecording, startRecording, stopRecording, evaluateAudio]);

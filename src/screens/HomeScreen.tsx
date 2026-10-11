@@ -157,7 +157,7 @@ export function HomeScreen() {
       setPendingItems(null);
       setMascotState('processing', getRandomPhrase('processing'));
       try {
-        const result = await processAudio(uri, field);
+        const result = await processAudio(uri, field, durationMs);
         const spoken = result.transcribed_text?.trim() ?? '';
         setTranscribedText(spoken);
         setAudioSource(result.source ?? null);

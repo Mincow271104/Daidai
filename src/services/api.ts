@@ -433,11 +433,11 @@ const SYSTEM_INSTRUCTION =
 const CHINESE_SPEECH_SYSTEM_INSTRUCTION =
   'You are a strict Taiwanese Mandarin (Traditional Chinese) Speech-to-Text engine.\n' +
   'CRITICAL RULES:\n' +
-  '1. The speaker is speaking Taiwanese Mandarin (Traditional Chinese / 繁體中文).\n' +
+  '1. The speaker is speaking Taiwanese Mandarin (Traditional Chinese / 繁體中文). Accurately capture their phonetics and tones.\n' +
   '2. Output MUST be 100% Traditional Chinese characters (繁體中文). NEVER output Simplified Chinese.\n' +
-  '3. NEVER TRANSCRIBE INTO VIETNAMESE. NEVER TRANSLATE INTO VIETNAMESE. ZERO VIETNAMESE WORDS ALLOWED.\n' +
-  '4. Under no circumstances should you output Vietnamese words (e.g. if speaker says "wàidài", output Chinese characters like "外帶", NEVER Vietnamese like "Khoai tây").\n' +
-  '5. Return JSON: {"text": "chữ Hán nghe được"}.';
+  '3. If a single isolated word or short phrase is spoken, transcribe the exact Traditional Chinese word or Taiwanese terminology matching those syllables. Do not hallucinate or expand into full sentences.\n' +
+  '4. NEVER TRANSCRIBE INTO VIETNAMESE. NEVER TRANSLATE INTO VIETNAMESE. ZERO VIETNAMESE WORDS ALLOWED.\n' +
+  '5. Return JSON: {"text": "chữ Hán nghe được", "pinyin": "pinyin có dấu thanh"}.';
 
 // ─── Tự động phục hồi JSON khi bị đứt đoạn / thiếu token (JSON Auto-Repair) ──
 function repairTruncatedJson(str: string): string {
@@ -723,7 +723,8 @@ export function isWhisperHallucination(text: string): boolean {
 export async function transcribeLocal(
   uri: string,
   language?: string,
-  field?: string
+  field?: string,
+  durationMs?: number
 ): Promise<{ text: string; language?: string; error?: string } | null> {
   const candidates = getLocalGpuCandidates();
   if (candidates.length === 0) return null;
@@ -741,6 +742,7 @@ export async function transcribeLocal(
       const params: Record<string, string> = {};
       if (language) params.language = language;
       if (field) params.field = field;
+      if (durationMs) params.duration_ms = String(durationMs);
 
       const uploadRes = await FileSystem.uploadAsync(`${baseUrl}/transcribe`, uri, {
         httpMethod: 'POST',
@@ -806,7 +808,8 @@ async function audioUriToBase64(uri: string) {
 export async function transcribeSpeech(
   uri: string,
   targetLang?: string,
-  fieldKey?: string
+  fieldKey?: string,
+  durationMs?: number
 ): Promise<TranscribeResult | null> {
   // Lớp 1: Thử Local GPU / CPU của laptop (timeout 7.5s)
   try {
@@ -814,7 +817,7 @@ export async function transcribeSpeech(
       setTimeout(() => reject(new Error('local_timeout')), 7500)
     );
     const localRes = await Promise.race([
-      transcribeLocal(uri, targetLang, fieldKey),
+      transcribeLocal(uri, targetLang, fieldKey, durationMs),
       localTimeout,
     ]);
     if (localRes && localRes.text && localRes.text.trim()) {
@@ -833,18 +836,26 @@ export async function transcribeSpeech(
   try {
     const { base64, mimeType } = await audioUriToBase64(uri);
 
+    const isShortAudio = typeof durationMs === 'number' && durationMs > 0 && durationMs <= 1800;
     let instruction = '';
     let customSystemToUse: string | undefined = undefined;
 
     if (targetLang === 'zh') {
       customSystemToUse = CHINESE_SPEECH_SYSTEM_INSTRUCTION;
-      instruction =
-        'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra bằng tiếng Trung Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese) kèm Pinyin có dấu thanh điệu.\n' +
-        'QUY TẮC BẮT BUỘC:\n' +
-        '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
-        '2. Nếu âm thanh im lặng, chỉ có tiếng thở hoặc tiếng ồn môi trường mà không có tiếng nói rõ ràng, trả về text: "", pinyin: "". TUYỆT ĐỐI KHÔNG TỰ BỊA RA TỪ NGỮ.\n' +
-        '3. TUYỆT ĐỐI KHÔNG GHI TIẾNG VIỆT, KHÔNG DÙNG GIẢN THỂ.\n' +
-        '4. Chỉ trả về JSON với trường text và pinyin.';
+      instruction = isShortAudio
+        ? 'Nghe đoạn âm thanh ngắn này (phát âm MỘT TỪ ĐƠN LẺ hoặc CỤM TỪ NGẮN tiếng Trung Phồn thể Đài Loan) và chép lại trung thực 100% ngữ âm người nói phát ra kèm Pinyin có dấu thanh điệu.\n' +
+          'QUY TẮC BẮT BUỘC:\n' +
+          '1. Tập trung vào âm thanh ngữ âm thực tế (Phonetics/Pinyin). Không tự ý ghép thành câu, không suy đoán ngữ cảnh, không tự đổi sang từ thông dụng khác nếu âm thanh không khớp.\n' +
+          '2. Nếu có nhiều chữ Hán đồng âm, ưu tiên từ vựng Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese).\n' +
+          '3. Nếu âm thanh im lặng hoặc chỉ có tiếng ồn, trả về text: "", pinyin: "".\n' +
+          '4. TUYỆT ĐỐI KHÔNG GHI TIẾNG VIỆT, KHÔNG DÙNG GIẢN THỂ.\n' +
+          '5. Chỉ trả về JSON với trường text và pinyin.'
+        : 'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra bằng tiếng Trung Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese) kèm Pinyin có dấu thanh điệu.\n' +
+          'QUY TẮC BẮT BUỘC:\n' +
+          '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
+          '2. Nếu âm thanh im lặng, chỉ có tiếng thở hoặc tiếng ồn môi trường mà không có tiếng nói rõ ràng, trả về text: "", pinyin: "". TUYỆT ĐỐI KHÔNG TỰ BỊA RA TỪ NGỮ.\n' +
+          '3. TUYỆT ĐỐI KHÔNG GHI TIẾNG VIỆT, KHÔNG DÙNG GIẢN THỂ.\n' +
+          '4. Chỉ trả về JSON với trường text và pinyin.';
     } else if (targetLang === 'vi') {
       instruction =
         'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text).\n' +
@@ -853,13 +864,19 @@ export async function transcribeSpeech(
         '2. Chép lại chính xác nội dung bằng chữ Quốc ngữ tiếng Việt chuẩn xác (nếu có từ tiếng Anh xen kẽ thì giữ nguyên chữ Latinh).\n' +
         '3. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.';
     } else {
-      instruction =
-        'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text, có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan).\n' +
-        'Quy tắc:\n' +
-        '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
-        '2. Phần tiếng Trung BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
-        '3. Giữ nguyên các từ tiếng Anh hoặc tiếng Việt viết bằng chữ Latinh nếu có.\n' +
-        '4. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.';
+      instruction = isShortAudio
+        ? 'Nghe đoạn âm thanh ngắn này (phát âm MỘT TỪ ĐƠN LẺ hoặc CỤM THUẬT NGỮ NGẮN) và chép lại trung thực 100% từng từ từng âm người nói phát ra (có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan) kèm Pinyin nếu là tiếng Trung.\n' +
+          'Quy tắc:\n' +
+          '1. Tập trung vào âm thanh ngữ âm thực tế. Tuyệt đối không tự ý suy đoán ghép thành câu dài, không tự thêm bớt từ.\n' +
+          '2. Phần tiếng Trung BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
+          '3. Giữ nguyên các từ tiếng Anh hoặc tiếng Việt viết bằng chữ Latinh nếu có.\n' +
+          '4. Chỉ trả về JSON với trường text và pinyin.'
+        : 'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text, có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan).\n' +
+          'Quy tắc:\n' +
+          '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
+          '2. Phần tiếng Trung BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
+          '3. Giữ nguyên các từ tiếng Anh hoặc tiếng Việt viết bằng chữ Latinh nếu có.\n' +
+          '4. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.';
     }
 
     const speechSchema = {
@@ -877,7 +894,7 @@ export async function transcribeSpeech(
         { inlineData: { mimeType, data: base64 } },
       ],
       speechSchema,
-      250,
+      isShortAudio ? 180 : 250,
       customSystemToUse
     );
     let text = (res?.text || res?.transcribed_text || '').trim();
@@ -1021,9 +1038,15 @@ function validateAndCleanSentenceItem(item: any): AISentenceItem | null {
 // ─── API Phân tích câu & Phân loại thông minh ──────────────────────────────
 
 /** Phân tích văn bản (dán hoặc đã nhận diện) với 1 lần gọi Gemini duy nhất */
-export async function analyzeText(text: string, fieldKey: string): Promise<AIAnalysisResult> {
+export async function analyzeText(
+  text: string,
+  fieldKey: string,
+  spokenPinyin?: string
+): Promise<AIAnalysisResult> {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, ' ');
-  const cacheKey = `analyze2:${fieldKey}:${normalized}`;
+  const cacheKey = spokenPinyin
+    ? `analyze2:${fieldKey}:${normalized}:${spokenPinyin.trim().toLowerCase()}`
+    : `analyze2:${fieldKey}:${normalized}`;
 
   // Kiểm tra SQLite cache
   try {
@@ -1064,8 +1087,14 @@ export async function analyzeText(text: string, fieldKey: string): Promise<AIAna
     // bỏ qua
   }
 
-  const sentences = splitIntoSentences(text);
-  const inputToAnalyze = sentences.length > 0 ? sentences.join('\n- ') : text.trim();
+  const trimmed = text.trim();
+  const sentences = splitIntoSentences(trimmed);
+  const inputToAnalyze = sentences.length > 0 ? sentences.join('\n- ') : trimmed;
+  const isSingleWordOrShort =
+    sentences.length <= 1 &&
+    trimmed.length <= 6 &&
+    !/[\n.?!,，。？！]/.test(trimmed) &&
+    trimmed.split(/\s+/).length <= 3;
   const field = getField(fieldKey);
 
   let topicsListDesc = 'other (Khác), work (Công sở), daily (Đời sống), food (Ăn uống), shopping (Mua sắm), travel (Di chuyển), greeting (Chào hỏi), feelings (Cảm xúc), health (Sức khỏe)';
@@ -1076,9 +1105,20 @@ export async function analyzeText(text: string, fieldKey: string): Promise<AIAna
     }
   } catch {}
 
+  const fieldPromptDesc = isSingleWordOrShort
+    ? (field.key !== 'daily'
+        ? `Lĩnh vực chuyên ngành tham chiếu: ${field.prompt} (${field.label}).\nLƯU Ý QUAN TRỌNG: Đầu vào là MỘT TỪ ĐƠN HOẶC ĐOẢN NGỮ NGẮN ("${trimmed}"). Hãy ưu tiên dịch đúng nghĩa thực tế gốc tự nhiên nhất của từ theo chuẩn tiếng Trung Phồn thể Đài Loan. CHỈ phân loại vào thuật ngữ chuyên ngành ${field.label} nếu từ này thực sự là thuật ngữ kỹ thuật đặc thù của ngành đó, tuyệt đối không gượng ép gán ghép sai nghĩa đời thường.`
+        : `Ngữ cảnh: Đời sống & giao tiếp sinh hoạt thường ngày chuẩn Đài Loan (Taiwan Traditional Chinese).`)
+    : `Lĩnh vực chuyên ngành: ${field.prompt} (${field.label}).`;
+
+  const pinyinBridgePrompt = spokenPinyin
+    ? `\nTHÔNG TIN NGỮ ÂM BỔ TRỢ: Phiên âm Pinyin ghi nhận từ mic là: "${spokenPinyin}". Nếu chữ Hán đầu vào "${trimmed}" có dấu hiệu lệch âm do bộ gõ/STT hoặc là từ Giản thể Đại Lục, hãy đối chiếu với Pinyin "${spokenPinyin}" để khôi phục đúng chữ Hán Phồn thể chuẩn Đài Loan tương ứng.\n`
+    : '';
+
   const promptText =
-    `Lĩnh vực chuyên ngành: ${field.prompt} (${field.label}).\n` +
-    `Danh sách các chủ đề (topic) hợp lệ: ${topicsListDesc}.\n\n` +
+    `${fieldPromptDesc}\n` +
+    `Danh sách các chủ đề (topic) hợp lệ: ${topicsListDesc}.\n` +
+    `${pinyinBridgePrompt}\n` +
     `Nhiệm vụ cho từng câu trong đoạn văn sau (đầu vào có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể Đài Loan - kể cả khi có từ mượn tiếng Anh xen kẽ):\n` +
     `- ${inputToAnalyze}\n\n` +
     `Quy tắc phân tích đa ngữ:\n` +
@@ -1098,7 +1138,9 @@ export async function analyzeText(text: string, fieldKey: string): Promise<AIAna
     `- topic: Chọn đúng 1 khóa (key) trong danh sách chủ đề trên. Nếu không rõ ràng hoặc không khớp chủ đề nào, bắt buộc chọn "other".\n` +
     `- chunks: Tách sentence_tw thành 2 đến 6 cụm từ có nghĩa, khi ghép các cụm lại phải khớp hoàn toàn sentence_tw.`;
 
-  const tokenBudget = Math.min(1400, Math.max(600, sentences.length * 280));
+  const tokenBudget = isSingleWordOrShort
+    ? 450
+    : Math.min(1400, Math.max(600, sentences.length * 280));
   const rawResult = await callGemini<{ items: any[] }>(
     [{ text: promptText }],
     ANALYSIS_SCHEMA,
@@ -1141,13 +1183,22 @@ export async function analyzeText(text: string, fieldKey: string): Promise<AIAna
 }
 
 /** Xử lý âm thanh ghi âm: GPU Whisper trước, fallback Gemini Multimodal */
-export async function processAudio(audioUri: string, fieldKey: string): Promise<AIAnalysisResult> {
+export async function processAudio(
+  audioUri: string,
+  fieldKey: string,
+  durationMs?: number
+): Promise<AIAnalysisResult> {
+  const isShortAudio = typeof durationMs === 'number' && durationMs > 0 && durationMs <= 1800;
+
   // 1. Thử nhận diện bằng GPU của laptop nếu server đang chạy (timeout tối đa 7.5s)
   try {
     const localTimeout = new Promise<null>((_, reject) =>
       setTimeout(() => reject(new Error('local_timeout')), 7500)
     );
-    const localRes = await Promise.race([transcribeLocal(audioUri, undefined, fieldKey), localTimeout]);
+    const localRes = await Promise.race([
+      transcribeLocal(audioUri, undefined, fieldKey, durationMs),
+      localTimeout,
+    ]);
     if (localRes?.text && !isWhisperHallucination(localRes.text)) {
       // 1.1: Kiểm tra Offline Phrasebook 2 chiều (0ms, 0 token)
       try {
@@ -1193,24 +1244,31 @@ export async function processAudio(audioUri: string, fieldKey: string): Promise<
   const { base64, mimeType } = await audioUriToBase64(audioUri);
 
   // 2.1: Phiên âm lời nói qua Gemini (nhanh ~1.5s, hỗ trợ Việt, Anh, và Trung Phồn thể chêm Anh)
-  const speechRes = await callGemini<{ text: string }>(
+  const speechRes = await callGemini<{ text: string; pinyin?: string }>(
     [
       {
-        text:
-          'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text, có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan).\n' +
-          'Quy tắc:\n' +
-          '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
-          '2. Phần tiếng Trung BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
-          '3. Giữ nguyên các từ tiếng Anh hoặc tiếng Việt viết bằng chữ Latinh nếu có.\n' +
-          '4. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.',
+        text: isShortAudio
+          ? 'Nghe đoạn âm thanh ngắn này (phát âm MỘT TỪ ĐƠN LẺ hoặc CỤM THUẬT NGỮ NGẮN) và chép lại trung thực 100% ngữ âm người nói phát ra (Verbatim Speech-to-Text, có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan) kèm Pinyin có dấu thanh điệu.\n' +
+            'Quy tắc:\n' +
+            '1. Tập trung vào âm thanh ngữ âm thực tế. Tuyệt đối không tự ý suy đoán ghép thành câu dài, không tự thêm bớt từ.\n' +
+            '2. Phần tiếng Trung BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
+            '3. Giữ nguyên các từ tiếng Anh hoặc tiếng Việt viết bằng chữ Latinh nếu có.\n' +
+            '4. Trả về JSON: text (lời nói đã nghe được) và pinyin (nếu là tiếng Trung).'
+          : 'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text, có thể là tiếng Việt, tiếng Anh, hoặc tiếng Trung Phồn thể chuẩn Đài Loan).\n' +
+            'Quy tắc:\n' +
+            '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
+            '2. Phần tiếng Trung BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese), TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ.\n' +
+            '3. Giữ nguyên các từ tiếng Anh hoặc tiếng Việt viết bằng chữ Latinh nếu có.\n' +
+            '4. Chỉ trả về lời nói đã nghe được trong trường text, không kèm lời giải thích nào.',
       },
       { inlineData: { mimeType, data: base64 } },
     ],
-    { type: 'OBJECT', properties: { text: { type: 'STRING' } }, required: ['text'] },
-    300
+    { type: 'OBJECT', properties: { text: { type: 'STRING' }, pinyin: { type: 'STRING' } }, required: ['text'] },
+    isShortAudio ? 180 : 300
   );
 
   const spokenText = speechRes?.text?.trim() ?? '';
+  const spokenPinyin = speechRes?.pinyin?.trim();
   if (!spokenText) {
     return {
       transcribed_text: '',
@@ -1221,7 +1279,7 @@ export async function processAudio(audioUri: string, fieldKey: string): Promise<
   }
 
   // 2.2: Phân tích ngữ nghĩa chuyên ngành bằng analyzeText (có cache SQLite, chuẩn hóa Phồn thể)
-  const analysis = await analyzeText(spokenText, fieldKey);
+  const analysis = await analyzeText(spokenText, fieldKey, spokenPinyin);
   return {
     ...analysis,
     transcribed_text: spokenText,
@@ -1906,9 +1964,12 @@ export async function translateConversationTurn(
 
   // 3. Phân tích ngữ nghĩa & dịch 2 chiều với Gemini
   const field = getField(fieldKey);
+  const isShortTurn = spokenText.length <= 6 && !/[\n.?!,，。？！]/.test(spokenText) && spokenText.split(/\s+/).length <= 3;
   const contextHintTurn =
     field.key !== 'daily'
-      ? `Ngữ cảnh chuyên ngành tham chiếu (chỉ áp dụng khi câu nói có đề cập công việc chuyên môn): ${field.label} (${field.prompt}).\n`
+      ? (isShortTurn
+          ? `Lĩnh vực chuyên ngành tham chiếu: ${field.label} (${field.prompt}) (Lưu ý: Đầu vào là từ/đoản ngữ ngắn. Ưu tiên dịch đúng nghĩa thực tế đời sống tự nhiên của từ, chỉ gán vào thuật ngữ chuyên ngành nếu câu nói thực sự liên quan đến kỹ thuật chuyên môn).\n`
+          : `Ngữ cảnh chuyên ngành tham chiếu (chỉ áp dụng khi câu nói có đề cập công việc chuyên môn): ${field.label} (${field.prompt}).\n`)
       : '';
 
   const promptText =
@@ -1925,7 +1986,7 @@ export async function translateConversationTurn(
       : `${contextHintTurn}` +
         `Đối tác Đài Loan vừa nói: "${spokenText}".\n\n` +
         `Nhiệm vụ:\n` +
-        `1. translation_tw: Chuẩn hóa chữ Hán Phồn thể người Đài vừa nói (Taiwan Traditional Chinese) cùng từ tiếng Anh nếu có. Không dùng Giản thể, không dùng từ Đại Lục. Chỉ sửa lỗi nhận diện nếu sai chữ đồng âm vô nghĩa.\n` +
+        `1. translation_tw: Chuẩn hóa chữ Hán Phồn thể người Đài vừa nói (Taiwan Traditional Chinese) cùng từ tiếng Anh nếu có. Không dùng Giản thể, không dùng từ Đại Lục. Nếu là từ đơn hoặc cụm từ ngắn đồng âm, hãy ưu tiên từ vựng Phồn thể chuẩn Đài Loan phù hợp nhất.\n` +
         `2. pinyin: Phiên âm có dấu thanh tương ứng từng chữ, các âm tiết cách nhau bằng dấu cách.\n` +
         `3. translation_vi: Dịch sang tiếng Việt tự nhiên, thoát ý, đúng ngữ cảnh đời thực (không dịch máy móc từng chữ, không tự suy diễn thêm ý mà đối tác không nói). Chuyển ngữ mềm mại trợ từ ngữ khí người Đài (喔, 啦, 耶, 吧, 呢...).\n` +
         `4. translation_en: Dịch sang tiếng Anh giao tiếp tự nhiên (Conversational English), ngắn gọn, chuẩn bản ngữ.\n` +
@@ -1936,7 +1997,7 @@ export async function translateConversationTurn(
   const turnRes = await callGemini<any>(
     [{ text: promptText }],
     CONVERSATION_TURN_SCHEMA,
-    500
+    isShortTurn ? 350 : 500
   );
 
   const rawTw = (turnRes?.translation_tw || spokenText).trim();
