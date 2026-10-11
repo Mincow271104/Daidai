@@ -242,8 +242,28 @@ export function ApiKeySettingsModal({
   };
 
   const maskKey = (key: string) => {
-    if (key.length <= 10) return key;
-    return `${key.slice(0, 6)}...${key.slice(-4)}`;
+    const trimmed = key.trim();
+    if (trimmed.length <= 14) return trimmed;
+    return `${trimmed.slice(0, 8)}...${trimmed.slice(-4)}`;
+  };
+
+  const getEnergyColor = (ratio: number): string => {
+    if (ratio >= 0.7) return '#10B981'; // >= 70%: màu xanh lá
+    if (ratio >= 0.3) return '#F59E0B'; // 30% - 69%: màu vàng
+    return '#EF4444'; // < 30%: màu đỏ
+  };
+
+  const formatResetTime = (quota: KeyQuotaInfo): string => {
+    if (quota.isCoolingDown || quota.status === 'exhausted_rpm') {
+      return `Reset sau ${quota.rpmResetSeconds}s`;
+    }
+    if (quota.status === 'exhausted_daily') {
+      return `Reset ngày sau ${quota.dailyResetHoursRemaining}h ${quota.dailyResetMinutesRemaining}p`;
+    }
+    if (quota.rpmResetSeconds > 0) {
+      return `Hồi sau ${quota.rpmResetSeconds}s • Reset ngày sau ${quota.dailyResetHoursRemaining}h ${quota.dailyResetMinutesRemaining}p`;
+    }
+    return `Reset ngày sau ${quota.dailyResetHoursRemaining}h ${quota.dailyResetMinutesRemaining}p`;
   };
 
   return (
@@ -366,9 +386,6 @@ export function ApiKeySettingsModal({
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle}>Danh sách Gemini API Key</Text>
-                  <Text style={styles.cardSubtitle}>
-                    Theo dõi hạn mức Free Tier: 15 lượt/phút (RPM) & 1.500 lượt/ngày (RPD)
-                  </Text>
                 </View>
               </View>
 
@@ -378,6 +395,8 @@ export function ApiKeySettingsModal({
                   {activeKeys.map((k, idx) => {
                     const statusInfo = keyValidationMap[k] || { status: 'valid', message: 'Đã lưu' };
                     const quota = quotaMap[k] || getKeyQuotaInfo(k);
+                    const rpmRatio = quota.rpmRemaining / quota.rpmLimit;
+                    const rpdRatio = quota.rpdRemaining / quota.rpdLimit;
 
                     return (
                       <View key={k + idx} style={styles.keyCard}>
@@ -390,30 +409,25 @@ export function ApiKeySettingsModal({
                             {maskKey(k)}
                           </Text>
 
-                          {/* Huy hiệu trạng thái kiểm tra (Monochrome đơn sắc) */}
+                          {/* Huy hiệu trạng thái nếu đang test hoặc lỗi */}
                           {statusInfo.status === 'testing' ? (
                             <View style={styles.statusPillTesting}>
                               <ActivityIndicator size="small" color="#64748B" />
                             </View>
-                          ) : statusInfo.status === 'valid' ? (
-                            <View style={styles.statusPillNeutral}>
-                              <Feather name="check" size={10} color="#475569" />
-                              <Text style={styles.statusTextNeutral}>Hoạt động</Text>
-                            </View>
                           ) : statusInfo.status === 'invalid' ? (
                             <Pressable
-                              style={styles.statusPillNeutral}
+                              style={styles.statusPillInvalid}
                               onPress={() =>
                                 Alert.alert('Chi tiết lỗi', statusInfo.message || 'Khóa không hoạt động.')
                               }
                               hitSlop={6}
                             >
-                              <Feather name="alert-circle" size={10} color="#475569" />
-                              <Text style={styles.statusTextNeutral}>Lỗi</Text>
+                              <Feather name="alert-circle" size={10} color="#DC2626" />
+                              <Text style={styles.statusTextInvalid}>Lỗi</Text>
                             </Pressable>
                           ) : null}
 
-                          {/* Nút kiểm tra lại (Monochrome) */}
+                          {/* Nút kiểm tra lại */}
                           <Pressable
                             style={styles.keyActionBtn}
                             onPress={() => handleTestKey(k)}
@@ -423,7 +437,7 @@ export function ApiKeySettingsModal({
                             <Feather name="refresh-cw" size={12} color="#64748B" />
                           </Pressable>
 
-                          {/* Nút xóa (Monochrome) */}
+                          {/* Nút xóa */}
                           <Pressable
                             style={styles.keyActionBtn}
                             onPress={() => handleDeleteKey(k)}
@@ -433,45 +447,42 @@ export function ApiKeySettingsModal({
                           </Pressable>
                         </View>
 
-                        {/* Bảng theo dõi Quota & Thời gian hồi phục (Tối giản, đơn sắc) */}
-                        <View style={styles.quotaPanel}>
-                          <View style={styles.quotaRow}>
-                            <View style={styles.quotaCol}>
-                              <Text style={styles.quotaLabel}>Hạn mức phút (RPM)</Text>
-                              <Text style={styles.quotaValue}>
-                                {quota.rpmRemaining}/{quota.rpmLimit}{' '}
-                                <Text style={styles.quotaUnit}>lượt</Text>
-                              </Text>
-                            </View>
-
-                            <View style={styles.quotaColDivider} />
-
-                            <View style={styles.quotaCol}>
-                              <Text style={styles.quotaLabel}>Hạn mức ngày (RPD)</Text>
-                              <Text style={styles.quotaValue}>
-                                {quota.rpdRemaining.toLocaleString()}/{quota.rpdLimit.toLocaleString()}{' '}
-                                <Text style={styles.quotaUnit}>lượt</Text>
-                              </Text>
+                        {/* Thanh năng lượng & Thời gian reset */}
+                        <View style={styles.energyPanel}>
+                          <View style={styles.energyRow}>
+                            <Text style={styles.energyLabel}>Phút</Text>
+                            <View style={styles.energyTrack}>
+                              <View
+                                style={[
+                                  styles.energyFill,
+                                  {
+                                    width: `${Math.max(4, Math.round(rpmRatio * 100))}%`,
+                                    backgroundColor: getEnergyColor(rpmRatio),
+                                  },
+                                ]}
+                              />
                             </View>
                           </View>
 
-                          {/* Thanh tiến độ RPM tối giản 3px */}
-                          <View style={styles.progressBarTrack}>
-                            <View
-                              style={[
-                                styles.progressBarFill,
-                                {
-                                  width: `${Math.min(100, (quota.rpmUsed / quota.rpmLimit) * 100)}%`,
-                                },
-                              ]}
-                            />
+                          <View style={styles.energyRow}>
+                            <Text style={styles.energyLabel}>Ngày</Text>
+                            <View style={styles.energyTrack}>
+                              <View
+                                style={[
+                                  styles.energyFill,
+                                  {
+                                    width: `${Math.max(4, Math.round(rpdRatio * 100))}%`,
+                                    backgroundColor: getEnergyColor(rpdRatio),
+                                  },
+                                ]}
+                              />
+                            </View>
                           </View>
 
-                          {/* Thời gian hồi phục & reset */}
-                          <View style={styles.cooldownRow}>
+                          <View style={styles.resetRow}>
                             <Feather name="clock" size={11} color="#64748B" />
-                            <Text style={styles.cooldownText} numberOfLines={1}>
-                              {quota.statusText} • Đặt lại ngày lúc {quota.dailyResetTime} (sau {quota.dailyResetHoursRemaining}h {quota.dailyResetMinutesRemaining}p)
+                            <Text style={styles.resetText} numberOfLines={1}>
+                              {formatResetTime(quota)}
                             </Text>
                           </View>
                         </View>
@@ -672,91 +683,69 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     color: '#334155',
+    letterSpacing: 0.2,
   },
   keyActionBtn: {
     padding: 6,
     borderRadius: 6,
   },
-  statusPillNeutral: {
+  statusPillInvalid: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    gap: 3,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#FECACA',
   },
-  statusTextNeutral: {
+  statusTextInvalid: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#475569',
+    fontWeight: '700',
+    color: '#DC2626',
   },
   statusPillTesting: {
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  quotaPanel: {
+  energyPanel: {
     backgroundColor: '#FAFAFA',
     paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 9,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 6,
   },
-  quotaRow: {
+  energyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
   },
-  quotaCol: {
-    flex: 1,
-  },
-  quotaColDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#E2E8F0',
-    marginHorizontal: 10,
-  },
-  quotaLabel: {
-    fontSize: 10,
+  energyLabel: {
+    fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
-    marginBottom: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    width: 32,
   },
-  quotaValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1E293B',
-    fontVariant: ['tabular-nums'],
-  },
-  quotaUnit: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#64748B',
-  },
-  progressBarTrack: {
-    height: 3,
+  energyTrack: {
+    flex: 1,
+    height: 6,
     backgroundColor: '#E2E8F0',
-    borderRadius: 1.5,
-    marginTop: 8,
-    marginBottom: 7,
+    borderRadius: 3,
     overflow: 'hidden',
   },
-  progressBarFill: {
+  energyFill: {
     height: '100%',
-    backgroundColor: '#475569',
-    borderRadius: 1.5,
+    borderRadius: 3,
   },
-  cooldownRow: {
+  resetRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    marginTop: 2,
   },
-  cooldownText: {
+  resetText: {
     flex: 1,
     fontSize: 11,
     color: '#64748B',
