@@ -198,17 +198,18 @@ export function getLocalGpuCandidates(): string[] {
   return Array.from(new Set(candidates));
 }
 
-// Thứ tự thử model thực tế hoạt động cao nhất và nhanh nhất của Google AI Studio (ưu tiên Flash-Lite hạn mức cao)
+// Thứ tự thử model: Ưu tiên model thông minh chuẩn (Gemini 2.5 Flash / Flash Latest) lên đầu,
+// tự động fallback sang các model nhẹ hơn khi chạm hạn mức, xoay tua linh hoạt
 const MODEL_POOL: string[] = Array.from(
   new Set(
     [
       process.env.EXPO_PUBLIC_GEMINI_MODEL,
-      'gemini-flash-lite-latest',
-      'gemini-3.5-flash-lite',
-      'gemini-3.1-flash-lite',
-      'gemini-3.5-flash',
-      'gemini-3.7-flash',
+      'gemini-2.5-flash',
       'gemini-flash-latest',
+      'gemini-2.0-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-flash-lite-latest',
+      'gemini-1.5-flash',
     ].filter(Boolean) as string[]
   )
 );
@@ -269,6 +270,7 @@ const SPEECH_TRANSCRIBE_SCHEMA = {
 
 export interface TranscribeResult {
   text: string;
+  pinyin?: string;
   source: 'local' | 'gemini';
   error?: string;
 }
@@ -837,12 +839,12 @@ export async function transcribeSpeech(
     if (targetLang === 'zh') {
       customSystemToUse = CHINESE_SPEECH_SYSTEM_INSTRUCTION;
       instruction =
-        'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra bằng tiếng Trung Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese).\n' +
+        'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra bằng tiếng Trung Phồn thể chuẩn Đài Loan (Taiwan Traditional Chinese) kèm Pinyin có dấu thanh điệu.\n' +
         'QUY TẮC BẮT BUỘC:\n' +
         '1. Người nói phát âm chữ nào thì ghi đúng chữ đó, tuyệt đối không tự ý sửa từ, không suy đoán ngữ cảnh, không tự thêm bớt từ.\n' +
-        '2. Nếu âm thanh im lặng, chỉ có tiếng thở hoặc tiếng ồn môi trường mà không có tiếng nói rõ ràng, trả về text: "". TUYỆT ĐỐI KHÔNG TỰ BỊA RA TỪ NGỮ.\n' +
+        '2. Nếu âm thanh im lặng, chỉ có tiếng thở hoặc tiếng ồn môi trường mà không có tiếng nói rõ ràng, trả về text: "", pinyin: "". TUYỆT ĐỐI KHÔNG TỰ BỊA RA TỪ NGỮ.\n' +
         '3. TUYỆT ĐỐI KHÔNG GHI TIẾNG VIỆT, KHÔNG DÙNG GIẢN THỂ.\n' +
-        '4. Chỉ trả về các chữ Hán nghe được trong trường text của JSON.';
+        '4. Chỉ trả về JSON với trường text và pinyin.';
     } else if (targetLang === 'vi') {
       instruction =
         'Nghe đoạn âm thanh này và chép lại trung thực nguyên văn 100% từng từ từng âm người nói phát ra (Verbatim Speech-to-Text).\n' +
@@ -864,17 +866,18 @@ export async function transcribeSpeech(
       type: 'OBJECT',
       properties: {
         text: { type: 'STRING' },
+        pinyin: { type: 'STRING' },
         transcribed_text: { type: 'STRING' },
       },
     };
 
-    const res = await callGemini<{ text?: string; transcribed_text?: string }>(
+    const res = await callGemini<{ text?: string; pinyin?: string; transcribed_text?: string }>(
       [
         { text: instruction },
         { inlineData: { mimeType, data: base64 } },
       ],
       speechSchema,
-      350,
+      250,
       customSystemToUse
     );
     let text = (res?.text || res?.transcribed_text || '').trim();
@@ -890,184 +893,14 @@ export async function transcribeSpeech(
     }
 
     if (text && !isWhisperHallucination(text)) {
-      return { text, source: 'gemini' };
+      const pinyinResult = res?.pinyin ? String(res.pinyin).trim() : undefined;
+      return { text, pinyin: pinyinResult, source: 'gemini' };
     }
   } catch (err: any) {
     console.log('[Gemini Cloud STT] Lỗi nhận diện âm thanh:', err?.message || err);
   }
 
   return null;
-}
-
-// ─── Đánh giá Luyện nói & Khảo thí Ngữ âm chuyên nghiệp ─────────────────────
-
-export interface PronunciationCharEvaluation {
-  char: string;
-  target_pinyin?: string;
-  actual_pinyin?: string;
-  status: 'correct' | 'warning' | 'error';
-}
-
-export interface PronunciationEvaluationResult {
-  hasSpeech: boolean;
-  score: number; // 0 - 100
-  accuracyLevel: 'Hoàn hảo' | 'Khá tốt' | 'Cần luyện thêm';
-  transcribedText: string;
-  transcribedPinyin: string;
-  feedback: string;
-  chars: PronunciationCharEvaluation[];
-}
-
-const PRONUNCIATION_SYSTEM_INSTRUCTION =
-  'Bạn là Chuyên gia Khảo thí Ngữ âm tiếng Trung Phồn thể chuẩn Đài Loan (Taiwanese Mandarin Pronunciation Examiner).\n' +
-  'Nhiệm vụ của bạn: Nghe file ghi âm của người học và CHẤM ĐIỂM PHÁT ÂM CỰC KỲ KHÁCH QUAN, NGHIÊM NGẶT so với câu mẫu chuẩn.\n\n' +
-  'CÁC QUY TẮC BẮT BUỘC (TUYỆT ĐỐI KHÔNG VI PHẠM):\n' +
-  '1. PHÁT HIỆN IM LẶNG / KHÔNG NÓI GÌ (SILENCE DETECTION):\n' +
-  '- Nếu file âm thanh chỉ có tiếng thở, tiếng ồn môi trường, tiếng bấm mic, im lặng, hoặc người học KHÔNG HỀ NÓI:\n' +
-  '  BẮT BUỘC trả về has_speech: false, score: 0, accuracy_level: "Cần luyện thêm", transcribed_text: "", transcribed_pinyin: "", feedback: "Không phát hiện giọng đọc. Bạn hãy nói to và rõ hơn nhé!".\n' +
-  '  Tất cả các chữ trong chars phải có status: "error".\n' +
-  '  TUYỆT ĐỐI KHÔNG tự động chép ra câu mẫu khi âm thanh im lặng!\n\n' +
-  '2. CHÉP LẠI TRUNG THỰC ÂM THANH NGƯỜI DÙNG THỰC SỰ ĐỌC:\n' +
-  '- Người học đọc âm nào, phụ âm nào, nguyên âm nào, thanh điệu nào thì chép lại CHÍNH XÁC âm thanh đó (transcribed_text bằng chữ Hán Phồn thể, transcribed_pinyin có kèm dấu thanh điệu chuẩn 1, 2, 3, 4 hoặc thanh nhẹ).\n' +
-  '- TUYỆT ĐỐI KHÔNG "tự sửa lỗi" hộ người học! Nếu người học cố tình đọc sai âm tiết, lệch thanh điệu (ví dụ: "xiè" đọc thành "shè" hay "xiě", "hǎo" đọc thành "hào" hay "kǎo", "shén" đọc thành "sén"): bạn PHẢI ghi đúng âm sai đó vào transcribed_text và transcribed_pinyin!\n' +
-  '- TUYỆT ĐỐI KHÔNG nghe thành tiếng Việt.\n\n' +
-  '3. ĐÁNH GIÁ TỪNG CHỮ (chars):\n' +
-  'Với từng chữ trong câu mẫu:\n' +
-  '- "correct" (🟢): Đọc đúng cả phụ âm, nguyên âm và thanh điệu chuẩn tiếng Trung Phồn thể Đài Loan.\n' +
-  '- "warning" (🟡): Đọc đúng âm cơ bản nhưng bị lệch thanh điệu (ví dụ thanh 4 đọc thành thanh 1, thanh 3 đọc thành thanh 2), hoặc phụ âm/nguyên âm hơi lệch nhẹ.\n' +
-  '- "error" (🔴): Đọc sai hẳn âm tiết, đọc sang từ khác, đọc ngọng, hoặc bỏ sót không đọc chữ này.\n\n' +
-  '4. QUY TẮC CHẤM ĐIỂM (score từ 0 đến 100):\n' +
-  '- Im lặng / không nói / không nghe rõ: 0 điểm.\n' +
-  '- Đọc sai âm tiết hoặc lệch thanh điệu: BẮT BUỘC BỊ TRỪ ĐIỂM NẶNG tương ứng với số lỗi (ví dụ: câu 3 chữ mà lệch thanh 1 chữ thì chỉ tối đa 60-70đ, lệch thanh cả câu thì chỉ 40-50đ, đọc sai âm tiết thì 10-30đ).\n' +
-  '- CHỈ CHO 90-100 ĐIỂM khi người học thực sự đọc chuẩn xác cả âm tiết lẫn thanh điệu của TẤT CẢ các chữ trong câu mẫu!';
-
-const PRONUNCIATION_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    has_speech: { type: 'BOOLEAN' },
-    transcribed_text: { type: 'STRING' },
-    transcribed_pinyin: { type: 'STRING' },
-    score: { type: 'INTEGER' },
-    accuracy_level: { type: 'STRING' },
-    feedback: { type: 'STRING' },
-    chars: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        properties: {
-          char: { type: 'STRING' },
-          target_pinyin: { type: 'STRING' },
-          actual_pinyin: { type: 'STRING' },
-          status: { type: 'STRING' },
-        },
-        required: ['char', 'status'],
-      },
-    },
-  },
-  required: [
-    'has_speech',
-    'transcribed_text',
-    'score',
-    'accuracy_level',
-    'feedback',
-    'chars',
-  ],
-};
-
-export async function evaluatePronunciation(
-  uri: string,
-  targetSentence: string,
-  targetPinyin?: string
-): Promise<PronunciationEvaluationResult> {
-  const cleanedTarget = cleanChineseText(targetSentence);
-  const targetChars = cleanedTarget.split('');
-  const targetPinyinList = splitPinyinIntoSyllables(targetPinyin);
-
-  if (!getActiveGeminiKey()) {
-    throw new Error('Chưa cấu hình API Key để đánh giá phát âm.');
-  }
-
-  try {
-    const { base64, mimeType } = await audioUriToBase64(uri);
-    const userPrompt =
-      `Câu mẫu chuẩn: "${targetSentence}"\n` +
-      (targetPinyin ? `Pinyin mẫu chuẩn: "${targetPinyin}"\n` : '') +
-      `Hãy nghe thật kỹ file âm thanh đính kèm và đánh giá nghiêm ngặt theo đúng cấu trúc JSON yêu cầu.`;
-
-    const res = await callGemini<any>(
-      [
-        { text: userPrompt },
-        { inlineData: { mimeType, data: base64 } },
-      ],
-      PRONUNCIATION_SCHEMA,
-      600,
-      PRONUNCIATION_SYSTEM_INSTRUCTION
-    );
-
-    const hasSpeech = Boolean(res?.has_speech) && Boolean(res?.transcribed_text?.trim());
-    if (!hasSpeech) {
-      return {
-        hasSpeech: false,
-        score: 0,
-        accuracyLevel: 'Cần luyện thêm',
-        transcribedText: '',
-        transcribedPinyin: '',
-        feedback: res?.feedback || 'Không phát hiện giọng đọc. Bạn hãy nói to và rõ hơn nhé!',
-        chars: targetChars.map((ch, i) => ({
-          char: ch,
-          target_pinyin: targetPinyinList[i] || '',
-          actual_pinyin: '',
-          status: 'error',
-        })),
-      };
-    }
-
-    const rawScore = typeof res.score === 'number' ? res.score : 0;
-    const clampedScore = Math.max(0, Math.min(100, Math.round(rawScore)));
-
-    let accuracyLevel: 'Hoàn hảo' | 'Khá tốt' | 'Cần luyện thêm' = 'Cần luyện thêm';
-    if (clampedScore >= 85) {
-      accuracyLevel = 'Hoàn hảo';
-    } else if (clampedScore >= 60) {
-      accuracyLevel = 'Khá tốt';
-    }
-
-    // Đồng bộ danh sách chars trả về từ AI để đảm bảo khớp 1-1 với từng chữ của câu mẫu
-    const aiCharsMap = new Map<string, any>();
-    if (Array.isArray(res.chars)) {
-      res.chars.forEach((c: any, idx: number) => {
-        aiCharsMap.set(`${c.char}_${idx}`, c);
-      });
-    }
-
-    const alignedChars: PronunciationCharEvaluation[] = targetChars.map((ch, i) => {
-      const fromAi = aiCharsMap.get(`${ch}_${i}`) || res?.chars?.[i];
-      let status: 'correct' | 'warning' | 'error' = 'error';
-      if (fromAi?.status === 'correct') status = 'correct';
-      else if (fromAi?.status === 'warning') status = 'warning';
-      else status = 'error';
-
-      return {
-        char: ch,
-        target_pinyin: fromAi?.target_pinyin || targetPinyinList[i] || '',
-        actual_pinyin: fromAi?.actual_pinyin || '',
-        status,
-      };
-    });
-
-    return {
-      hasSpeech: true,
-      score: clampedScore,
-      accuracyLevel,
-      transcribedText: (res.transcribed_text || '').trim(),
-      transcribedPinyin: (res.transcribed_pinyin || '').trim(),
-      feedback: res.feedback || '',
-      chars: alignedChars,
-    };
-  } catch (err: any) {
-    console.warn('evaluatePronunciation error:', err);
-    throw err;
-  }
 }
 
 // ─── Tách câu tại máy (0 token) ─────────────────────────────────────────────

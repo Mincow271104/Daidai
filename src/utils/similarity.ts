@@ -158,6 +158,7 @@ export function normalizeSearchText(text: string): string {
 export interface RadarChar {
   char: string;
   pinyin?: string;
+  actual_pinyin?: string;
   status: 'correct' | 'warning' | 'error'; // 🟢 xanh (đúng), 🟡 vàng (gần đúng/lệch âm), 🔴 đỏ (sai hoàn toàn)
 }
 
@@ -168,18 +169,25 @@ export interface PronunciationRadarResult {
   chars: RadarChar[];
 }
 
-import { splitPinyinIntoSyllables, alignPinyinWithChinese, segmentPinyinWord } from './pinyin';
+import {
+  splitPinyinIntoSyllables,
+  alignPinyinWithChinese,
+  segmentPinyinWord,
+  stripPinyinTone,
+} from './pinyin';
 
-export { splitPinyinIntoSyllables, alignPinyinWithChinese, segmentPinyinWord };
+export { splitPinyinIntoSyllables, alignPinyinWithChinese, segmentPinyinWord, stripPinyinTone };
 
 export function evaluatePronunciationRadar(
   target: string,
   actual: string,
-  targetPinyin?: string
+  targetPinyin?: string,
+  actualPinyin?: string
 ): PronunciationRadarResult {
   const cleanedTarget = cleanChineseText(target);
   const cleanedActual = cleanChineseText(actual);
-  const pinyinList = splitPinyinIntoSyllables(targetPinyin);
+  const targetPinyinList = splitPinyinIntoSyllables(targetPinyin);
+  const actualPinyinList = splitPinyinIntoSyllables(actualPinyin);
 
   if (!cleanedTarget) {
     return {
@@ -198,50 +206,96 @@ export function evaluatePronunciationRadar(
       label: 'Cần luyện thêm',
       chars: cleanedTarget.split('').map((char, i) => ({
         char,
-        pinyin: pinyinList[i] || '',
+        pinyin: targetPinyinList[i] || '',
         status: 'error',
       })),
     };
   }
 
+  const targetChars = cleanedTarget.split('');
   const actualChars = cleanedActual.split('');
-  let actualIdx = 0;
   const radarChars: RadarChar[] = [];
   let correctCount = 0;
+  let warningCount = 0;
+  let actualIdx = 0;
 
-  for (let i = 0; i < cleanedTarget.length; i++) {
-    const targetChar = cleanedTarget[i];
-    const pinyin = pinyinList[i] || '';
+  for (let i = 0; i < targetChars.length; i++) {
+    const tChar = targetChars[i];
+    const tPy = targetPinyinList[i] || '';
+    const tBase = stripPinyinTone(tPy).toLowerCase();
 
-    // Tìm kiếm trong phạm vi gần (window size 3)
+    // 1. Tìm kiếm khớp chính xác chữ Hán trong phạm vi cửa sổ 3 ký tự
     let foundIdx = -1;
     for (let k = actualIdx; k < Math.min(actualIdx + 3, actualChars.length); k++) {
-      if (actualChars[k] === targetChar) {
+      if (actualChars[k] === tChar) {
         foundIdx = k;
         break;
       }
     }
 
     if (foundIdx !== -1) {
-      // Khớp chính xác
-      radarChars.push({ char: targetChar, pinyin, status: 'correct' });
+      // Khớp chính xác chữ Hán
+      radarChars.push({
+        char: tChar,
+        pinyin: tPy,
+        status: 'correct',
+      });
       correctCount++;
       actualIdx = foundIdx + 1;
     } else {
-      // Kiểm tra xem ký tự thực tế tại vị trí đó có hay không (nếu có nhưng khác chữ -> có thể do phát âm lệch thanh điệu)
+      // 2. Không khớp chữ Hán: Kiểm tra xem có đúng âm cơ bản nhưng lệch thanh không
       if (actualIdx < actualChars.length) {
-        radarChars.push({ char: targetChar, pinyin, status: 'warning' });
-        actualIdx++;
+        const aPy = actualPinyinList[actualIdx] || '';
+        const aBase = stripPinyinTone(aPy).toLowerCase();
+
+        // Kiểm tra xem âm tiết cơ bản có giống nhau không (ví dụ: 'xiě' vs 'xiè' đều có base là 'xie', 'hào' vs 'hǎo' đều có base là 'hao')
+        // Hoặc các cặp âm đồng vị trong khẩu âm Đài Loan: s/sh, z/zh, c/ch, in/ing, en/eng
+        const isSameBase = Boolean(tBase && aBase && tBase === aBase);
+        const isNearHomophone = Boolean(
+          tBase &&
+          aBase &&
+          ((tBase.replace(/^sh/, 's') === aBase.replace(/^sh/, 's')) ||
+           (tBase.replace(/^zh/, 'z') === aBase.replace(/^zh/, 'z')) ||
+           (tBase.replace(/^ch/, 'c') === aBase.replace(/^ch/, 'c')) ||
+           (tBase.replace(/ng$/, 'n') === aBase.replace(/ng$/, 'n')))
+        );
+
+        if (isSameBase || isNearHomophone) {
+          // Đúng âm tiết cơ bản nhưng bị lệch thanh điệu -> warning (🟡 Lệch thanh)
+          radarChars.push({
+            char: tChar,
+            pinyin: tPy,
+            actual_pinyin: aPy,
+            status: 'warning',
+          });
+          warningCount++;
+          actualIdx++;
+        } else {
+          // Ký tự hoàn toàn khác, đọc sai âm tiết hoặc đọc bừa từ khác -> error (🔴 Sai âm)
+          radarChars.push({
+            char: tChar,
+            pinyin: tPy,
+            actual_pinyin: aPy,
+            status: 'error',
+          });
+          actualIdx++;
+        }
       } else {
-        // Hoàn toàn không phát âm tới chữ này
-        radarChars.push({ char: targetChar, pinyin, status: 'error' });
+        // Hoàn toàn không phát âm tới chữ này (bỏ sót) -> error (🔴 Sai âm)
+        radarChars.push({
+          char: tChar,
+          pinyin: tPy,
+          status: 'error',
+        });
       }
     }
   }
 
-  const score = Math.max(0, Math.min(1, correctCount / cleanedTarget.length));
+  // Điểm số: Đúng hoàn toàn = 1.0, Lệch thanh = 0.5, Sai âm = 0.0
+  const rawScore = (correctCount * 1.0 + warningCount * 0.5) / targetChars.length;
+  const score = Math.max(0, Math.min(1, rawScore));
   const percentage = Math.round(score * 100);
-  const label = score >= 0.85 ? 'Hoàn hảo' : score >= 0.6 ? 'Khá tốt' : 'Cần luyện thêm';
+  const label = percentage >= 85 ? 'Hoàn hảo' : percentage >= 60 ? 'Khá tốt' : 'Cần luyện thêm';
 
   return {
     score,
