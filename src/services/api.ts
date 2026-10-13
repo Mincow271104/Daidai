@@ -225,8 +225,6 @@ getModelTierSetting()
 // Danh sách các model cũ đã bị Google ngừng cấp quyền cho tài khoản mới (tránh gọi dẫn đến lỗi 404)
 const DEPRECATED_MODELS = new Set([
   'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-2.5-pro',
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
   'gemini-2.0-flash-exp',
@@ -237,39 +235,39 @@ const DEPRECATED_MODELS = new Set([
   'gemini-1.0-pro',
 ]);
 
-// Phân tầng Model Pool theo 3 mức Low / Medium / High (toàn bộ là model thế hệ 3.x còn hiệu lực trên Free Tier):
-// Low: Model siêu nhẹ, phản hồi nhanh nhất, tiêu tốn ít quota Free Tier nhất (3.5-flash-lite, 3.1-flash-lite...)
-// Medium: Cân bằng tự nhiên chuẩn Đài Loan và tốc độ xử lý (3.8-flash, 3.5-flash, 3.6-flash...)
-// High: Thông minh cao cấp, phân tích ngữ cảnh sâu sắc nhất (3.8-flash, 3.1-pro-preview, 3.5-flash...)
+// Phân tầng Model Pool theo 3 mức Low / Medium / High:
+// Low: Model nhẹ, siêu nhanh, tối ưu quota
+// Medium: Cân bằng tự nhiên chuẩn Đài Loan và tốc độ xử lý
+// High: Thông minh cao cấp, phân tích ngữ cảnh sâu sắc nhất
 const TIER_MODEL_POOLS: Record<ModelTier, string[]> = {
   low: [
+    'gemini-2.5-flash',
     'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-3.6-flash',
     'gemini-flash-latest',
+    'gemini-3.5-flash',
     'gemini-3.8-flash',
   ],
   medium: [
     process.env.EXPO_PUBLIC_GEMINI_MODEL && !DEPRECATED_MODELS.has(process.env.EXPO_PUBLIC_GEMINI_MODEL)
       ? process.env.EXPO_PUBLIC_GEMINI_MODEL
       : '',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
     'gemini-3.8-flash',
     'gemini-3.5-flash',
     'gemini-3.6-flash',
-    'gemini-flash-latest',
     'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
   ].filter(Boolean) as string[],
   high: [
     process.env.EXPO_PUBLIC_GEMINI_MODEL && !DEPRECATED_MODELS.has(process.env.EXPO_PUBLIC_GEMINI_MODEL)
       ? process.env.EXPO_PUBLIC_GEMINI_MODEL
       : '',
+    'gemini-2.5-flash',
     'gemini-3.8-flash',
     'gemini-3.1-pro-preview',
     'gemini-pro-latest',
     'gemini-3.5-flash',
-    'gemini-3.6-flash',
     'gemini-flash-latest',
     'gemini-3.5-flash-lite',
   ].filter(Boolean) as string[],
@@ -705,8 +703,8 @@ async function callGemini<T>(
         responseMimeType: 'application/json',
         responseSchema: schema,
         temperature: 0.1,
-        // Tối ưu token output: dùng maxTokens của hàm gọi, mặc định 2048 nếu không chỉ định
-        maxOutputTokens: maxTokens > 0 ? maxTokens : 2048,
+        // Đặt sàn tối thiểu 1200 token để đảm bảo JSON sinh ra không bao giờ bị cắt cụt giữa chừng
+        maxOutputTokens: maxTokens > 0 ? Math.max(1200, maxTokens) : 2048,
       };
 
       try {
@@ -764,9 +762,16 @@ async function callGemini<T>(
         }
 
         const data: any = await res.json();
-        const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const candidate = data?.candidates?.[0];
+        const finishReason = candidate?.finishReason;
+        if (finishReason === 'MAX_TOKENS') {
+          console.warn(`[Gemini] Model ${model} chạm trần token MAX_TOKENS, chuyển model kế tiếp...`);
+          continue;
+        }
+
+        const raw = candidate?.content?.parts?.[0]?.text;
         if (!raw) {
-          lastError = `${model}: phản hồi rỗng (${data?.candidates?.[0]?.finishReason ?? 'UNKNOWN'})`;
+          lastError = `${model}: phản hồi rỗng (${finishReason ?? 'UNKNOWN'})`;
           console.warn(`[Gemini] ${lastError}, chuyển model...`);
           continue;
         }
@@ -1662,11 +1667,11 @@ export interface AiChatReply {
 export const AI_CHAT_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
-    content: { type: 'STRING' },
     tw: { type: 'STRING' },
     pinyin: { type: 'STRING' },
     vi: { type: 'STRING' },
     explanation: { type: 'STRING' },
+    content: { type: 'STRING' },
   },
   required: ['content'],
 };
@@ -1676,7 +1681,6 @@ export const AI_CHAT_RESPONSE_SCHEMA = {
  * - Giới hạn phạm vi: chỉ hỗ trợ tiếng Trung Phồn thể, từ chối câu hỏi ngoài lề <15 từ.
  * - Rolling context: chỉ lấy tối đa 4 tin nhắn gần nhất.
  * - Tự động học từ feedback sửa lỗi trước đây của người dùng.
- * - Tối ưu token nghiêm ngặt (max 450 tokens).
  */
 export async function sendAiChatMessage(
   userQuery: string,
@@ -1734,7 +1738,7 @@ export async function sendAiChatMessage(
     const reply = await callGemini<AiChatReply>(
       [{ text: promptUser }],
       AI_CHAT_RESPONSE_SCHEMA,
-      450,
+      1500,
       systemPrompt
     );
     return reply;
@@ -2758,7 +2762,7 @@ export async function suggestTerms(
       properties: { terms: { type: 'ARRAY', items: TERM_ITEM_SCHEMA } },
       required: ['terms'],
     },
-    1000
+    1600
   );
   return r.terms ?? [];
 }
