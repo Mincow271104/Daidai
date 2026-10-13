@@ -134,6 +134,7 @@ export async function testGeminiApiKey(key: string): Promise<KeyValidationResult
     clearTimeout(timeout);
 
     if (res.status === 200) {
+      getSupportedModelsForKey(trimmed).catch(() => {});
       return { valid: true, reason: 'Khóa hoạt động tốt' };
     }
 
@@ -221,47 +222,110 @@ getModelTierSetting()
   })
   .catch(() => {});
 
-// Phân tầng Model Pool theo 3 mức Low / Medium / High:
-// Low: Model nhẹ, siêu nhanh, tốn cực ít quota Free Tier
-// Medium: Cân bằng tự nhiên chuẩn Đài và hạn mức Free Tier 15 RPM
-// High: Thông minh cao cấp, lập luận ngữ cảnh sâu sắc nhất
+// Danh sách các model cũ đã bị Google ngừng cấp quyền cho tài khoản mới (tránh gọi dẫn đến lỗi 404)
+const DEPRECATED_MODELS = new Set([
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-2.0-flash-exp',
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-latest',
+  'gemini-1.5-pro',
+  'gemini-1.5-pro-latest',
+  'gemini-1.0-pro',
+]);
+
+// Phân tầng Model Pool theo 3 mức Low / Medium / High (toàn bộ là model thế hệ 3.x còn hiệu lực trên Free Tier):
+// Low: Model siêu nhẹ, phản hồi nhanh nhất, tiêu tốn ít quota Free Tier nhất (3.5-flash-lite, 3.1-flash-lite...)
+// Medium: Cân bằng tự nhiên chuẩn Đài Loan và tốc độ xử lý (3.8-flash, 3.5-flash, 3.6-flash...)
+// High: Thông minh cao cấp, phân tích ngữ cảnh sâu sắc nhất (3.8-flash, 3.1-pro-preview, 3.5-flash...)
 const TIER_MODEL_POOLS: Record<ModelTier, string[]> = {
-  low: Array.from(
-    new Set(
-      [
-        'gemini-2.5-flash-lite',
-        'gemini-flash-lite-latest',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash',
-        'gemini-2.5-flash',
-      ].filter(Boolean) as string[]
-    )
-  ),
-  medium: Array.from(
-    new Set(
-      [
-        process.env.EXPO_PUBLIC_GEMINI_MODEL,
-        'gemini-2.5-flash',
-        'gemini-flash-latest',
-        'gemini-2.0-flash',
-        'gemini-2.5-flash-lite',
-        'gemini-1.5-flash',
-      ].filter(Boolean) as string[]
-    )
-  ),
-  high: Array.from(
-    new Set(
-      [
-        process.env.EXPO_PUBLIC_GEMINI_MODEL,
-        'gemini-2.5-flash',
-        'gemini-2.5-pro',
-        'gemini-flash-latest',
-        'gemini-2.0-flash',
-        'gemini-2.5-flash-lite',
-      ].filter(Boolean) as string[]
-    )
-  ),
+  low: [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-flash-latest',
+    'gemini-3.8-flash',
+  ],
+  medium: [
+    process.env.EXPO_PUBLIC_GEMINI_MODEL && !DEPRECATED_MODELS.has(process.env.EXPO_PUBLIC_GEMINI_MODEL)
+      ? process.env.EXPO_PUBLIC_GEMINI_MODEL
+      : '',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-flash-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+  ].filter(Boolean) as string[],
+  high: [
+    process.env.EXPO_PUBLIC_GEMINI_MODEL && !DEPRECATED_MODELS.has(process.env.EXPO_PUBLIC_GEMINI_MODEL)
+      ? process.env.EXPO_PUBLIC_GEMINI_MODEL
+      : '',
+    'gemini-3.8-flash',
+    'gemini-3.1-pro-preview',
+    'gemini-pro-latest',
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-flash-latest',
+    'gemini-3.5-flash-lite',
+  ].filter(Boolean) as string[],
 };
+
+const discoveredModelsCache: Record<string, string[]> = {};
+
+/**
+ * Tự động phát hiện danh sách model Gemini thực tế khả dụng cho API Key hiện tại
+ */
+export async function getSupportedModelsForKey(apiKey: string): Promise<string[]> {
+  const key = (apiKey || '').trim();
+  if (!key) return [];
+  if (discoveredModelsCache[key] && discoveredModelsCache[key].length > 0) {
+    return discoveredModelsCache[key];
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (res.ok) {
+      const data: any = await res.json();
+      if (Array.isArray(data?.models)) {
+        const models = data.models
+          .filter((m: any) => {
+            const methods = Array.isArray(m?.supportedGenerationMethods) ? m.supportedGenerationMethods : [];
+            const name = String(m?.name || '').replace(/^models\//, '');
+            return (
+              methods.includes('generateContent') &&
+              !name.includes('embedding') &&
+              !name.includes('aqa') &&
+              !name.includes('imagen') &&
+              !DEPRECATED_MODELS.has(name)
+            );
+          })
+          .map((m: any) => String(m.name || '').replace(/^models\//, ''))
+          .filter(Boolean);
+
+        if (models.length > 0) {
+          discoveredModelsCache[key] = models;
+          console.log(`[Gemini] Đã phát hiện ${models.length} model hợp lệ từ Google cho key:`, models.slice(0, 6));
+          return models;
+        }
+      }
+    }
+  } catch {
+    // Không ảnh hưởng nếu mạng chậm, tiếp tục dùng static pool
+  }
+  return [];
+}
 
 const RETRYABLE = new Set([400, 404, 429, 500, 502, 503, 504]);
 
@@ -622,8 +686,19 @@ async function callGemini<T>(
     let quotaHitOnThisKey = false;
 
     const currentModelPool = TIER_MODEL_POOLS[activeModelTier] || TIER_MODEL_POOLS.medium;
-    for (let i = 0; i < currentModelPool.length; i++) {
-      const model = currentModelPool[i];
+
+    // Tự động kiểm tra và ưu tiên các model được Google xác thực khả dụng cho API Key hiện tại
+    const verifiedModels = await getSupportedModelsForKey(currentKey);
+    let poolToUse = [...currentModelPool];
+    if (verifiedModels.length > 0) {
+      const tierMatches = poolToUse.filter((m) => verifiedModels.includes(m));
+      const remainingVerified = verifiedModels.filter((m) => !poolToUse.includes(m));
+      poolToUse = Array.from(new Set([...tierMatches, ...remainingVerified, ...poolToUse]));
+    }
+
+    for (let i = 0; i < poolToUse.length; i++) {
+      const rawModel = poolToUse[i];
+      const model = rawModel.replace(/^models\//, '');
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
 
       const generationConfig: any = {
@@ -671,6 +746,16 @@ async function callGemini<T>(
             }
           }
 
+          if (res.status === 404) {
+            console.warn(`[Gemini] Model ${model} trả về 404, tự động loại bỏ khỏi pool và thử model kế tiếp...`);
+            const poolIdx = currentModelPool.indexOf(model);
+            if (poolIdx !== -1) currentModelPool.splice(poolIdx, 1);
+            if (discoveredModelsCache[currentKey]) {
+              discoveredModelsCache[currentKey] = discoveredModelsCache[currentKey].filter((m) => m !== model);
+            }
+            continue;
+          }
+
           if (RETRYABLE.has(res.status)) {
             console.warn(`[Gemini] Model ${model} gặp lỗi status ${res.status}, chuyển model kế tiếp...`);
             continue;
@@ -689,8 +774,11 @@ async function callGemini<T>(
         try {
           const parsed = cleanAndParseJson<T>(raw);
           // Đưa model thành công lên đầu pool của tier hiện tại để lần gọi sau phản hồi nhanh nhất
-          if (i > 0) {
-            currentModelPool.splice(i, 1);
+          const succIdx = currentModelPool.indexOf(model);
+          if (succIdx > 0) {
+            currentModelPool.splice(succIdx, 1);
+            currentModelPool.unshift(model);
+          } else if (succIdx === -1) {
             currentModelPool.unshift(model);
           }
           keySucceeded = true;
