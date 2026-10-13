@@ -12,8 +12,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Animated,
-  PanResponder,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -25,8 +23,6 @@ import {
   getNotificationSettings,
   setNotificationSettings,
   NotificationSettings,
-  getModelTierSetting,
-  setModelTierSetting,
 } from '../database/repository';
 import {
   setCustomUserKeys,
@@ -34,10 +30,7 @@ import {
   testGeminiApiKey,
   getKeyQuotaInfo,
   KeyQuotaInfo,
-  getModelTier,
-  setModelTier,
 } from '../services/api';
-import { ModelTier } from '../types';
 import { syncAllSmartNotifications } from '../services/notifications';
 import { ensureOnline } from '../services/network';
 
@@ -45,116 +38,6 @@ interface ApiKeySettingsModalProps {
   visible: boolean;
   onClose: () => void;
   onSettingsChanged?: () => void;
-}
-
-const TIERS: ModelTier[] = ['low', 'medium', 'high'];
-const TIER_LABELS: Record<ModelTier, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-};
-
-interface TierSliderProps {
-  value: ModelTier;
-  onChange: (tier: ModelTier) => void;
-}
-
-function TierSlider({ value, onChange }: TierSliderProps) {
-  const [trackWidth, setTrackWidth] = useState(0);
-  const activeIndex = TIERS.indexOf(value);
-  const slideAnim = useRef(new Animated.Value(activeIndex)).current;
-
-  useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: activeIndex,
-      useNativeDriver: true,
-      bounciness: 4,
-      speed: 16,
-    }).start();
-  }, [activeIndex]);
-
-  const setTierByIndex = (idx: number) => {
-    const clamped = Math.max(0, Math.min(2, Math.round(idx)));
-    const nextTier = TIERS[clamped];
-    if (nextTier !== value) {
-      Haptics.selectionAsync();
-      onChange(nextTier);
-    }
-  };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 6,
-      onPanResponderMove: (_, gesture) => {
-        if (trackWidth <= 0) return;
-        const segmentWidth = (trackWidth - 6) / 3;
-        const currentPos = activeIndex * segmentWidth + gesture.dx;
-        const fractionalIdx = Math.max(0, Math.min(2, currentPos / segmentWidth));
-        slideAnim.setValue(fractionalIdx);
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (trackWidth <= 0) return;
-        const segmentWidth = (trackWidth - 6) / 3;
-        const currentPos = activeIndex * segmentWidth + gesture.dx;
-        const targetIdx = Math.max(0, Math.min(2, Math.round(currentPos / segmentWidth)));
-        setTierByIndex(targetIdx);
-        Animated.spring(slideAnim, {
-          toValue: targetIdx,
-          useNativeDriver: true,
-          bounciness: 4,
-          speed: 16,
-        }).start();
-      },
-    })
-  ).current;
-
-  const segmentWidth = trackWidth > 0 ? (trackWidth - 6) / 3 : 0;
-  const translateX = slideAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [0, segmentWidth, segmentWidth * 2],
-  });
-
-  return (
-    <View
-      style={styles.sliderTrack}
-      onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
-      {...panResponder.panHandlers}
-    >
-      {trackWidth > 0 && (
-        <Animated.View
-          style={[
-            styles.sliderThumb,
-            {
-              width: segmentWidth,
-              transform: [{ translateX }],
-            },
-          ]}
-        />
-      )}
-
-      {TIERS.map((tier, idx) => {
-        const isSelected = value === tier;
-        return (
-          <Pressable
-            key={tier}
-            style={styles.sliderSegment}
-            onPress={() => setTierByIndex(idx)}
-            hitSlop={8}
-          >
-            <Text
-              style={[
-                styles.sliderLabel,
-                isSelected && styles.sliderLabelActive,
-              ]}
-            >
-              {TIER_LABELS[tier]}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
 }
 
 export function ApiKeySettingsModal({
@@ -170,7 +53,6 @@ export function ApiKeySettingsModal({
     streakEnabled: true,
     morningEnabled: true,
   });
-  const [modelTier, setModelTierState] = useState<ModelTier>('medium');
   const [isSaving, setIsSaving] = useState(false);
   const [testingStatusText, setTestingStatusText] = useState('');
   const [keyValidationMap, setKeyValidationMap] = useState<
@@ -203,20 +85,16 @@ export function ApiKeySettingsModal({
 
   const loadSettings = async () => {
     try {
-      const [savedKeys, speakEnabled, notif, savedTier] = await Promise.all([
+      const [savedKeys, speakEnabled, notif] = await Promise.all([
         getSavedApiKeys(),
         getAutoSpeakSetting(),
         getNotificationSettings(),
-        getModelTierSetting(),
       ]);
       const currentAllKeys = getGeminiKeys();
       const loadedKeys = currentAllKeys.length > 0 ? currentAllKeys : savedKeys;
       setActiveKeys(loadedKeys);
       setAutoSpeak(speakEnabled);
       setNotifSettings(notif);
-      if (savedTier) {
-        setModelTierState(savedTier);
-      }
       setKeysInput('');
 
       const initialMap: Record<string, { status: 'idle' | 'testing' | 'valid' | 'invalid'; message?: string }> = {};
@@ -230,15 +108,6 @@ export function ApiKeySettingsModal({
     } catch {
       // ignore
     }
-  };
-
-  const handleSelectTier = async (tier: ModelTier) => {
-    if (modelTier === tier) return;
-    Haptics.selectionAsync();
-    setModelTierState(tier);
-    setModelTier(tier);
-    await setModelTierSetting(tier);
-    onSettingsChanged?.();
   };
 
   const handleToggleAutoSpeak = async (value: boolean) => {
@@ -509,19 +378,6 @@ export function ApiKeySettingsModal({
               </View>
             </View>
 
-            {/* Cấu hình Hiệu năng */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardIconBox}>
-                  <Feather name="sliders" size={18} color="#64748B" />
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardTitle}>Hiệu năng</Text>
-                </View>
-              </View>
-
-              <TierSlider value={modelTier} onChange={handleSelectTier} />
-            </View>
 
             {/* Tùy chọn: Quản lý Gemini API Keys & Hạn mức Quota */}
             <View style={styles.card}>
@@ -987,46 +843,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
-  },
-  sliderTrack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F1F5F9',
-    padding: 3,
-    marginTop: 14,
-    position: 'relative',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  sliderThumb: {
-    position: 'absolute',
-    top: 3,
-    left: 3,
-    bottom: 3,
-    borderRadius: 19,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  sliderSegment: {
-    flex: 1,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  sliderLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  sliderLabelActive: {
-    color: '#0F172A',
-    fontWeight: '700',
   },
 });

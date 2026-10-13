@@ -11,7 +11,6 @@ import {
   VocabularyItem,
   WordContextExplanation,
   SituationalPhraseResult,
-  ModelTier,
   AiChatFeedback,
 } from '../types';
 import { buildOptions, buildOptionsWithMeta, buildOptionsWithPinyin, OptionWithMeta, shuffle } from '../utils/shuffle';
@@ -33,7 +32,6 @@ import {
   getPhraseCorrections,
   lookupLocalVocabulary,
   getUserTopics,
-  getModelTierSetting,
 } from '../database/repository';
 import {
   recordGeminiRequest,
@@ -134,7 +132,6 @@ export async function testGeminiApiKey(key: string): Promise<KeyValidationResult
     clearTimeout(timeout);
 
     if (res.status === 200) {
-      getSupportedModelsForKey(trimmed).catch(() => {});
       return { valid: true, reason: 'Khóa hoạt động tốt' };
     }
 
@@ -202,128 +199,19 @@ export function getLocalGpuCandidates(): string[] {
   return Array.from(new Set(candidates));
 }
 
-let activeModelTier: ModelTier = 'medium';
-
-export function getModelTier(): ModelTier {
-  return activeModelTier;
-}
-
-export function setModelTier(tier: ModelTier): void {
-  activeModelTier = tier;
-  console.log(`[Gemini] Đã chuyển Model Tier áp dụng toàn app sang: ${tier}`);
-}
-
-// Tự động đồng bộ Model Tier từ SQLite khi khởi động
-getModelTierSetting()
-  .then((savedTier) => {
-    if (savedTier) {
-      activeModelTier = savedTier;
-    }
-  })
-  .catch(() => {});
-
-// Danh sách các model cũ đã bị Google ngừng cấp quyền cho tài khoản mới (tránh gọi dẫn đến lỗi 404)
-const DEPRECATED_MODELS = new Set([
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-2.0-flash-exp',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-pro',
-  'gemini-1.5-pro-latest',
-  'gemini-1.0-pro',
-]);
-
-// Phân tầng Model Pool theo 3 mức Low / Medium / High:
-// Low: Model nhẹ, siêu nhanh, tối ưu quota
-// Medium: Cân bằng tự nhiên chuẩn Đài Loan và tốc độ xử lý
-// High: Thông minh cao cấp, phân tích ngữ cảnh sâu sắc nhất
-const TIER_MODEL_POOLS: Record<ModelTier, string[]> = {
-  low: [
-    'gemini-2.5-flash',
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-latest',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
-  ],
-  medium: [
-    process.env.EXPO_PUBLIC_GEMINI_MODEL && !DEPRECATED_MODELS.has(process.env.EXPO_PUBLIC_GEMINI_MODEL)
-      ? process.env.EXPO_PUBLIC_GEMINI_MODEL
-      : '',
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-3.8-flash',
-    'gemini-3.5-flash',
-    'gemini-3.6-flash',
-    'gemini-3.5-flash-lite',
-  ].filter(Boolean) as string[],
-  high: [
-    process.env.EXPO_PUBLIC_GEMINI_MODEL && !DEPRECATED_MODELS.has(process.env.EXPO_PUBLIC_GEMINI_MODEL)
-      ? process.env.EXPO_PUBLIC_GEMINI_MODEL
-      : '',
-    'gemini-2.5-flash',
-    'gemini-3.8-flash',
-    'gemini-3.1-pro-preview',
-    'gemini-pro-latest',
-    'gemini-3.5-flash',
-    'gemini-flash-latest',
-    'gemini-3.5-flash-lite',
-  ].filter(Boolean) as string[],
-};
-
-const discoveredModelsCache: Record<string, string[]> = {};
-
-/**
- * Tự động phát hiện danh sách model Gemini thực tế khả dụng cho API Key hiện tại
- */
-export async function getSupportedModelsForKey(apiKey: string): Promise<string[]> {
-  const key = (apiKey || '').trim();
-  if (!key) return [];
-  if (discoveredModelsCache[key] && discoveredModelsCache[key].length > 0) {
-    return discoveredModelsCache[key];
-  }
-
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4500);
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-
-    if (res.ok) {
-      const data: any = await res.json();
-      if (Array.isArray(data?.models)) {
-        const models = data.models
-          .filter((m: any) => {
-            const methods = Array.isArray(m?.supportedGenerationMethods) ? m.supportedGenerationMethods : [];
-            const name = String(m?.name || '').replace(/^models\//, '');
-            return (
-              methods.includes('generateContent') &&
-              !name.includes('embedding') &&
-              !name.includes('aqa') &&
-              !name.includes('imagen') &&
-              !DEPRECATED_MODELS.has(name)
-            );
-          })
-          .map((m: any) => String(m.name || '').replace(/^models\//, ''))
-          .filter(Boolean);
-
-        if (models.length > 0) {
-          discoveredModelsCache[key] = models;
-          console.log(`[Gemini] Đã phát hiện ${models.length} model hợp lệ từ Google cho key:`, models.slice(0, 6));
-          return models;
-        }
-      }
-    }
-  } catch {
-    // Không ảnh hưởng nếu mạng chậm, tiếp tục dùng static pool
-  }
-  return [];
-}
+// Thứ tự thử model: Ưu tiên model thông minh chuẩn (Gemini 2.5 Flash / Flash Latest) lên đầu,
+// tự động fallback sang các model nhẹ hơn khi chạm hạn mức, xoay tua linh hoạt
+const MODEL_POOL: string[] = Array.from(
+  new Set(
+    [
+      process.env.EXPO_PUBLIC_GEMINI_MODEL,
+      'gemini-2.5-flash',
+      'gemini-flash-latest',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+    ].filter(Boolean) as string[]
+  )
+);
 
 const RETRYABLE = new Set([400, 404, 429, 500, 502, 503, 504]);
 
@@ -683,28 +571,16 @@ async function callGemini<T>(
     let keySucceeded = false;
     let quotaHitOnThisKey = false;
 
-    const currentModelPool = TIER_MODEL_POOLS[activeModelTier] || TIER_MODEL_POOLS.medium;
-
-    // Tự động kiểm tra và ưu tiên các model được Google xác thực khả dụng cho API Key hiện tại
-    const verifiedModels = await getSupportedModelsForKey(currentKey);
-    let poolToUse = [...currentModelPool];
-    if (verifiedModels.length > 0) {
-      const tierMatches = poolToUse.filter((m) => verifiedModels.includes(m));
-      const remainingVerified = verifiedModels.filter((m) => !poolToUse.includes(m));
-      poolToUse = Array.from(new Set([...tierMatches, ...remainingVerified, ...poolToUse]));
-    }
-
-    for (let i = 0; i < poolToUse.length; i++) {
-      const rawModel = poolToUse[i];
-      const model = rawModel.replace(/^models\//, '');
+    for (let i = 0; i < MODEL_POOL.length; i++) {
+      const model = MODEL_POOL[i];
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
 
       const generationConfig: any = {
         responseMimeType: 'application/json',
         responseSchema: schema,
         temperature: 0.1,
-        // Đặt sàn tối thiểu 1200 token để đảm bảo JSON sinh ra không bao giờ bị cắt cụt giữa chừng
-        maxOutputTokens: maxTokens > 0 ? Math.max(1200, maxTokens) : 2048,
+        // Đặt tối thiểu 1024 token để đảm bảo JSON sinh ra không bao giờ bị cắt cụt
+        maxOutputTokens: maxTokens > 0 ? Math.max(1024, maxTokens) : 2048,
       };
 
       try {
@@ -744,16 +620,6 @@ async function callGemini<T>(
             }
           }
 
-          if (res.status === 404) {
-            console.warn(`[Gemini] Model ${model} trả về 404, tự động loại bỏ khỏi pool và thử model kế tiếp...`);
-            const poolIdx = currentModelPool.indexOf(model);
-            if (poolIdx !== -1) currentModelPool.splice(poolIdx, 1);
-            if (discoveredModelsCache[currentKey]) {
-              discoveredModelsCache[currentKey] = discoveredModelsCache[currentKey].filter((m) => m !== model);
-            }
-            continue;
-          }
-
           if (RETRYABLE.has(res.status)) {
             console.warn(`[Gemini] Model ${model} gặp lỗi status ${res.status}, chuyển model kế tiếp...`);
             continue;
@@ -762,29 +628,19 @@ async function callGemini<T>(
         }
 
         const data: any = await res.json();
-        const candidate = data?.candidates?.[0];
-        const finishReason = candidate?.finishReason;
-        if (finishReason === 'MAX_TOKENS') {
-          console.warn(`[Gemini] Model ${model} chạm trần token MAX_TOKENS, chuyển model kế tiếp...`);
-          continue;
-        }
-
-        const raw = candidate?.content?.parts?.[0]?.text;
+        const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!raw) {
-          lastError = `${model}: phản hồi rỗng (${finishReason ?? 'UNKNOWN'})`;
+          lastError = `${model}: phản hồi rỗng (${data?.candidates?.[0]?.finishReason ?? 'UNKNOWN'})`;
           console.warn(`[Gemini] ${lastError}, chuyển model...`);
           continue;
         }
 
         try {
           const parsed = cleanAndParseJson<T>(raw);
-          // Đưa model thành công lên đầu pool của tier hiện tại để lần gọi sau phản hồi nhanh nhất
-          const succIdx = currentModelPool.indexOf(model);
-          if (succIdx > 0) {
-            currentModelPool.splice(succIdx, 1);
-            currentModelPool.unshift(model);
-          } else if (succIdx === -1) {
-            currentModelPool.unshift(model);
+          // Đưa model thành công lên đầu pool để lần gọi sau phản hồi nhanh nhất
+          if (i > 0) {
+            MODEL_POOL.splice(i, 1);
+            MODEL_POOL.unshift(model);
           }
           keySucceeded = true;
           return parsed;
@@ -2762,7 +2618,7 @@ export async function suggestTerms(
       properties: { terms: { type: 'ARRAY', items: TERM_ITEM_SCHEMA } },
       required: ['terms'],
     },
-    1600
+    1000
   );
   return r.terms ?? [];
 }

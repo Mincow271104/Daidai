@@ -8,7 +8,6 @@ import {
   PhraseCorrection,
   CustomScenario,
   DialogueTurn,
-  ModelTier,
   AiChatSession,
   AiChatMessage,
   AiChatFeedback,
@@ -1443,19 +1442,6 @@ export async function togglePinField(fieldKey: string): Promise<boolean> {
   return isPinnedNow;
 }
 
-// ─── Model Tier Setting ─────────────────────────────────────────
-
-export async function getModelTierSetting(): Promise<ModelTier> {
-  const val = await getSetting('model_tier');
-  if (val === 'low' || val === 'medium' || val === 'high') {
-    return val;
-  }
-  return 'medium';
-}
-
-export async function setModelTierSetting(tier: ModelTier): Promise<void> {
-  await setSetting('model_tier', tier);
-}
 
 // ─── AI Chat Sessions & Messages ────────────────────────────────
 

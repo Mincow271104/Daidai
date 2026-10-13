@@ -226,8 +226,6 @@ export interface SituationalPhraseResult {
   suggested_topic: string;
 }
 
-export type ModelTier = 'low' | 'medium' | 'high';
-
 export interface AiChatSession {
   id: string;
   title: string;
