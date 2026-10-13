@@ -153,6 +153,38 @@ async function doInitDatabase(): Promise<void> {
       scope TEXT DEFAULT 'communication'
     );
 
+    CREATE TABLE IF NOT EXISTS ai_chat_sessions (
+      id TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_chat_messages (
+      id TEXT PRIMARY KEY NOT NULL,
+      session_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      tw TEXT,
+      pinyin TEXT,
+      vi TEXT,
+      explanation TEXT,
+      created_at INTEGER NOT NULL,
+      feedback INTEGER DEFAULT 0,
+      feedback_note TEXT,
+      FOREIGN KEY (session_id) REFERENCES ai_chat_sessions(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_chat_feedback (
+      id TEXT PRIMARY KEY NOT NULL,
+      message_id TEXT NOT NULL,
+      original_query TEXT NOT NULL,
+      bot_response TEXT NOT NULL,
+      user_correction TEXT NOT NULL,
+      reason TEXT,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_vocab_captured ON vocabulary(captured_at DESC);
     CREATE INDEX IF NOT EXISTS idx_fsrs_next_review ON fsrs_state(next_review ASC);
     CREATE INDEX IF NOT EXISTS idx_ai_cache_created ON ai_cache(created_at ASC);
@@ -164,6 +196,9 @@ async function doInitDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_offline_phrases_cat ON offline_phrases(category);
     CREATE INDEX IF NOT EXISTS idx_user_topics_created ON user_topics(created_at ASC);
     CREATE INDEX IF NOT EXISTS idx_user_topics_scope ON user_topics(scope);
+    CREATE INDEX IF NOT EXISTS idx_ai_chat_session ON ai_chat_messages(session_id, created_at ASC);
+    CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_updated ON ai_chat_sessions(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_ai_chat_feedback_created ON ai_chat_feedback(created_at DESC);
   `);
 
   // Migration an toàn cho DB cũ: kiểm tra và thêm các cột nếu chưa có TRƯỚC KHI tạo index trên cột đó
@@ -249,6 +284,19 @@ async function doInitDatabase(): Promise<void> {
     console.warn('Migration user_topics error:', err);
   }
 
+  // Migration cột tw cho ai_chat_messages nếu DB đã tạo từ trước
+  try {
+    const chatTableInfo = await database.getAllAsync<{ name: string }>(
+      `PRAGMA table_info(ai_chat_messages);`
+    );
+    const existingChatCols = new Set(chatTableInfo.map((col) => col.name));
+    if (!existingChatCols.has('tw')) {
+      await database.runAsync(`ALTER TABLE ai_chat_messages ADD COLUMN tw TEXT;`);
+    }
+  } catch (err) {
+    console.warn('Migration ai_chat_messages error:', err);
+  }
+
   // Dọn dẹp cache AI quá hạn 90 ngày và xóa cache đối thoại cũ để đảm bảo AI dịch mới chuẩn xác
   try {
     const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
@@ -276,6 +324,9 @@ async function doInitDatabase(): Promise<void> {
   );
   await database.runAsync(
     `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('gemini_keys', '')`,
+  );
+  await database.runAsync(
+    `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('model_tier', 'medium')`,
   );
 
   // Khởi tạo các chủ đề mặc định trong bảng user_topics (chủ đề "Khác" là mặc định, scope 'communication')

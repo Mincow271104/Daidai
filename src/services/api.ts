@@ -11,6 +11,8 @@ import {
   VocabularyItem,
   WordContextExplanation,
   SituationalPhraseResult,
+  ModelTier,
+  AiChatFeedback,
 } from '../types';
 import { buildOptions, buildOptionsWithMeta, buildOptionsWithPinyin, OptionWithMeta, shuffle } from '../utils/shuffle';
 import { getField } from '../constants/fields';
@@ -31,6 +33,7 @@ import {
   getPhraseCorrections,
   lookupLocalVocabulary,
   getUserTopics,
+  getModelTierSetting,
 } from '../database/repository';
 import {
   recordGeminiRequest,
@@ -198,21 +201,67 @@ export function getLocalGpuCandidates(): string[] {
   return Array.from(new Set(candidates));
 }
 
-// Thứ tự thử model: Ưu tiên model thông minh chuẩn (Gemini 2.5 Flash / Flash Latest) lên đầu,
-// tự động fallback sang các model nhẹ hơn khi chạm hạn mức, xoay tua linh hoạt
-const MODEL_POOL: string[] = Array.from(
-  new Set(
-    [
-      process.env.EXPO_PUBLIC_GEMINI_MODEL,
-      'gemini-2.5-flash',
-      'gemini-flash-latest',
-      'gemini-2.0-flash',
-      'gemini-2.5-flash-lite',
-      'gemini-flash-lite-latest',
-      'gemini-1.5-flash',
-    ].filter(Boolean) as string[]
-  )
-);
+let activeModelTier: ModelTier = 'medium';
+
+export function getModelTier(): ModelTier {
+  return activeModelTier;
+}
+
+export function setModelTier(tier: ModelTier): void {
+  activeModelTier = tier;
+  console.log(`[Gemini] Đã chuyển Model Tier áp dụng toàn app sang: ${tier}`);
+}
+
+// Tự động đồng bộ Model Tier từ SQLite khi khởi động
+getModelTierSetting()
+  .then((savedTier) => {
+    if (savedTier) {
+      activeModelTier = savedTier;
+    }
+  })
+  .catch(() => {});
+
+// Phân tầng Model Pool theo 3 mức Low / Medium / High:
+// Low: Model nhẹ, siêu nhanh, tốn cực ít quota Free Tier
+// Medium: Cân bằng tự nhiên chuẩn Đài và hạn mức Free Tier 15 RPM
+// High: Thông minh cao cấp, lập luận ngữ cảnh sâu sắc nhất
+const TIER_MODEL_POOLS: Record<ModelTier, string[]> = {
+  low: Array.from(
+    new Set(
+      [
+        'gemini-2.5-flash-lite',
+        'gemini-flash-lite-latest',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-2.5-flash',
+      ].filter(Boolean) as string[]
+    )
+  ),
+  medium: Array.from(
+    new Set(
+      [
+        process.env.EXPO_PUBLIC_GEMINI_MODEL,
+        'gemini-2.5-flash',
+        'gemini-flash-latest',
+        'gemini-2.0-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-1.5-flash',
+      ].filter(Boolean) as string[]
+    )
+  ),
+  high: Array.from(
+    new Set(
+      [
+        process.env.EXPO_PUBLIC_GEMINI_MODEL,
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-flash-latest',
+        'gemini-2.0-flash',
+        'gemini-2.5-flash-lite',
+      ].filter(Boolean) as string[]
+    )
+  ),
+};
 
 const RETRYABLE = new Set([400, 404, 429, 500, 502, 503, 504]);
 
@@ -572,16 +621,17 @@ async function callGemini<T>(
     let keySucceeded = false;
     let quotaHitOnThisKey = false;
 
-    for (let i = 0; i < MODEL_POOL.length; i++) {
-      const model = MODEL_POOL[i];
+    const currentModelPool = TIER_MODEL_POOLS[activeModelTier] || TIER_MODEL_POOLS.medium;
+    for (let i = 0; i < currentModelPool.length; i++) {
+      const model = currentModelPool[i];
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
 
       const generationConfig: any = {
         responseMimeType: 'application/json',
         responseSchema: schema,
         temperature: 0.1,
-        // Đặt tối thiểu 1024 token để đảm bảo JSON sinh ra không bao giờ bị cắt cụt
-        maxOutputTokens: maxTokens > 0 ? Math.max(1024, maxTokens) : 2048,
+        // Tối ưu token output: dùng maxTokens của hàm gọi, mặc định 2048 nếu không chỉ định
+        maxOutputTokens: maxTokens > 0 ? maxTokens : 2048,
       };
 
       try {
@@ -638,10 +688,10 @@ async function callGemini<T>(
 
         try {
           const parsed = cleanAndParseJson<T>(raw);
-          // Đưa model thành công lên đầu pool để lần gọi sau phản hồi nhanh nhất
+          // Đưa model thành công lên đầu pool của tier hiện tại để lần gọi sau phản hồi nhanh nhất
           if (i > 0) {
-            MODEL_POOL.splice(i, 1);
-            MODEL_POOL.unshift(model);
+            currentModelPool.splice(i, 1);
+            currentModelPool.unshift(model);
           }
           keySucceeded = true;
           return parsed;
@@ -1511,64 +1561,113 @@ export async function classifyTopicForContent(
 
 // ─── Trợ lý Diễn đạt theo Ngữ cảnh thực tế (Tư duy người Đài Loan) ─────────
 
-const SITUATIONAL_RESPONSE_SCHEMA = {
+// ─── Trợ lý AI Chatbot chuyên sâu tiếng Trung Phồn thể Đài Loan ───────────────
+
+export interface AiChatReply {
+  content: string; // Nội dung hội thoại / giải thích tiếng Việt
+  tw?: string; // Câu hoặc từ vựng Phồn thể chuẩn Đài Loan (nếu có)
+  pinyin?: string; // Bính âm có dấu thanh
+  vi?: string; // Nghĩa tiếng Việt của câu/từ
+  explanation?: string; // Lưu ý ngữ pháp / văn hóa Đài súc tích
+}
+
+export const AI_CHAT_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
+    content: { type: 'STRING' },
     tw: { type: 'STRING' },
     pinyin: { type: 'STRING' },
     vi: { type: 'STRING' },
-    chunks: { type: 'ARRAY', items: { type: 'STRING' } },
-    cultural_note: { type: 'STRING' },
-    avoid_note: { type: 'STRING' },
-    suggested_topic: { type: 'STRING' },
+    explanation: { type: 'STRING' },
   },
-  required: ['tw', 'pinyin', 'vi', 'chunks', 'cultural_note', 'suggested_topic'],
+  required: ['content'],
 };
 
 /**
- * Tạo 1 câu giao tiếp chuẩn bản xứ Đài Loan dựa trên ngữ cảnh thực tế (Tối ưu quota & tối giản).
+ * Gửi tin nhắn tới Trợ lý AI Chatbot chuyên tiếng Trung Phồn thể Đài Loan.
+ * - Giới hạn phạm vi: chỉ hỗ trợ tiếng Trung Phồn thể, từ chối câu hỏi ngoài lề <15 từ.
+ * - Rolling context: chỉ lấy tối đa 4 tin nhắn gần nhất.
+ * - Tự động học từ feedback sửa lỗi trước đây của người dùng.
+ * - Tối ưu token nghiêm ngặt (max 450 tokens).
  */
+export async function sendAiChatMessage(
+  userQuery: string,
+  history: { role: 'user' | 'assistant'; content: string }[] = [],
+  recentFeedbacks: AiChatFeedback[] = []
+): Promise<AiChatReply> {
+  const query = (userQuery || '').trim();
+  if (!query) {
+    throw new Error('Vui lòng nhập nội dung câu hỏi.');
+  }
+
+  // 1. Rolling context window: chỉ gửi tối đa 4 tin nhắn gần nhất (2 lượt hỏi-đáp)
+  const trimmedHistory = (history || []).slice(-4);
+  let historySection = '';
+  if (trimmedHistory.length > 0) {
+    historySection =
+      '\nLỊCH SỬ HỘI THOẠI GẦN ĐÂY:\n' +
+      trimmedHistory
+        .map((m) => `${m.role === 'user' ? 'Người dùng' : 'Trợ lý'}: ${m.content}`)
+        .join('\n') +
+      '\n';
+  }
+
+  // 2. Tích hợp dữ liệu học hỏi từ phản hồi / sửa lỗi trước đây của người dùng
+  let feedbackSection = '';
+  if (recentFeedbacks && recentFeedbacks.length > 0) {
+    feedbackSection =
+      '\nLƯU Ý CÁC GÓP Ý & SỬA LỖI TỪ NGƯỜI DÙNG TRƯỚC ĐÂY (TUYỆT ĐỐI GHI NHỚ VÀ KHÔNG LẶP LẠI SAI LẦM):\n' +
+      recentFeedbacks
+        .slice(0, 4)
+        .map(
+          (fb, idx) =>
+            `${idx + 1}. Tình huống: "${fb.original_query}" -> Phản hồi cũ bị lỗi, người dùng sửa thành: "${fb.user_correction}"${
+              fb.reason ? ` (Lý do: ${fb.reason})` : ''
+            }.`
+        )
+        .join('\n') +
+      '\n';
+  }
+
+  const systemPrompt =
+    `Bạn là Trợ lý AI chuyên gia khẩu ngữ và từ vựng tiếng Trung Phồn thể Đài Loan (Taiwanese Traditional Chinese Specialist).\n\n` +
+    `PHẠM VI HOẠT ĐỘNG DUY NHẤT:\n` +
+    `- CHỈ hỗ trợ các nội dung liên quan trực tiếp đến tiếng Trung Phồn thể Đài Loan: cách diễn đạt theo ngữ cảnh thực tế đời sống, từ vựng, ngữ pháp, bính âm (pinyin), phân biệt cách dùng từ giữa Đài Loan và Đại Lục, phát âm, và văn hóa giao tiếp Đài Loan.\n\n` +
+    `QUY TẮC BẮT BUỘC (TỐI ƯU QUOTA & BẢO VỆ PHẠM VI):\n` +
+    `1. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi KHÔNG LIÊN QUAN đến học tiếng Trung (ví dụ: lập trình, toán học, tin tức, chính trị, viết văn ngoài lề), lập tức từ chối lịch sự trong ĐÚNG 1 CÂU DƯỚI 15 TỪ vào trường "content": "Tôi là trợ lý tiếng Trung Phồn thể Đài Loan, chỉ hỗ trợ học tiếng và từ vựng." (Tuyệt đối không điền các trường tw, pinyin, vi, explanation).\n` +
+    `2. LUÔN DÙNG CHỮ PHỒN THỂ ĐÀI LOAN (繁體字), KHÔNG BAO GIỜ dùng chữ Giản thể (简体字), KHÔNG dùng từ ngữ Đại Lục (ví dụ dùng: 捷運, 機車, 計程車, 便當, 買單, 垃圾桶, 影片...).\n` +
+    `3. Khi người dùng hỏi cách nói, dịch câu, hoặc hỏi từ vựng theo tình huống: Hãy cung cấp 'tw' (câu/từ Phồn thể chuẩn Đài Loan nhất), 'pinyin' (có dấu thanh), 'vi' (nghĩa tiếng Việt tự nhiên), 'explanation' (lưu ý ngữ cảnh / văn hóa Đài súc tích dưới 35 từ), và 'content' (lời giải đáp thân thiện, súc tích).\n` +
+    `4. Giữ câu trả lời súc tích, đi thẳng vào trọng tâm để tiết kiệm token tối đa.` +
+    feedbackSection;
+
+  const promptUser = `${historySection}Người dùng hỏi: "${query}"\n\nHãy trả lời bằng JSON theo schema.`;
+
+  try {
+    const reply = await callGemini<AiChatReply>(
+      [{ text: promptUser }],
+      AI_CHAT_RESPONSE_SCHEMA,
+      450,
+      systemPrompt
+    );
+    return reply;
+  } catch (err: any) {
+    console.error('sendAiChatMessage error:', err);
+    throw new Error(`Trợ lý AI chưa thể phản hồi: ${err.message || 'Lỗi kết nối'}`);
+  }
+}
+
 export async function generateSituationalPhrases(
   contextDescription: string
 ): Promise<SituationalPhraseResult> {
-  const context = (contextDescription || '').trim();
-  if (!context) {
-    throw new Error('Vui lòng nhập mô tả ngữ cảnh.');
-  }
-
-  let userTopicsStr = 'daily (Đời sống), travel (Di chuyển), food (Ăn uống), shopping (Mua sắm), work (Công sở), greeting (Chào hỏi), feelings (Cảm xúc), health (Sức khỏe), other (Khác)';
-  try {
-    const userTopics = await getUserTopics();
-    if (userTopics && userTopics.length > 0) {
-      userTopicsStr = userTopics.map((t) => `${t.key} (${t.label})`).join(', ');
-    }
-  } catch {}
-
-  const promptText =
-    `Bạn là chuyên gia ngôn ngữ khẩu ngữ chuẩn bản xứ Đài Loan (Taiwanese Pragmatics).\n\n` +
-    `BỐI CẢNH / Ý MUỐN NÓI CỦA NGƯỜI DÙNG:\n` +
-    `"${context}"\n\n` +
-    `YÊU CẦU (TỐI GIẢN, CHUẨN XÁC, TIẾT KIỆM TỪ):\n` +
-    `1. tw: Đưa ra ĐÚNG 1 CÂU PHỒN THỂ ĐÀI LOAN tự nhiên, chuẩn khẩu ngữ nhất (TUYỆT ĐỐI KHÔNG DÙNG GIẢN THỂ, KHÔNG DÙNG TỪ ĐẠI LỤC, KHÔNG DỊCH WORD-BY-WORD TIẾNG VIỆT).\n` +
-    `2. pinyin: Bính âm có dấu thanh, các chữ cách nhau bằng dấu cách rõ ràng.\n` +
-    `3. vi: Nghĩa tiếng Việt thoát ý, tự nhiên.\n` +
-    `4. chunks: Tách câu tw thành 2-4 cụm từ có nghĩa để người dùng chạm tra cứu.\n` +
-    `5. cultural_note: GIẢI THÍCH TƯ DUY NGƯỜI ĐÀI thật ngắn gọn (tối đa 2 câu súc tích, dưới 35 từ), nêu lý do người bản xứ nói như vậy thay vì cách dịch thô.\n` +
-    `6. avoid_note: Nêu 1 câu dịch thô người Việt hay nhầm lẫn cần tránh (tối đa 20 từ). Nếu không có lỗi dịch thô phổ biến thì để trống.\n` +
-    `7. suggested_topic: 1 topic_key phù hợp nhất từ: ${userTopicsStr}. Mặc định "other".\n\n` +
-    `Trả về đúng JSON theo schema.`;
-
-  try {
-    const result = await callGemini<SituationalPhraseResult>(
-      [{ text: promptText }],
-      SITUATIONAL_RESPONSE_SCHEMA,
-      380
-    );
-    return result;
-  } catch (err: any) {
-    console.error('generateSituationalPhrases error:', err);
-    throw new Error(`Không thể tạo câu theo ngữ cảnh: ${err.message || 'Lỗi kết nối AI'}`);
-  }
+  const res = await sendAiChatMessage(`Cách diễn đạt chuẩn Đài Loan trong ngữ cảnh: "${contextDescription}"`);
+  return {
+    tw: res.tw || '',
+    pinyin: res.pinyin || '',
+    vi: res.vi || res.content || '',
+    chunks: res.tw ? [res.tw] : [],
+    cultural_note: res.explanation || res.content || '',
+    suggested_topic: 'other',
+  };
 }
 
 // ─── Dịch siêu tốc 2 thì (Instant 2-Pass Translation) ──────────────────────

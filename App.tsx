@@ -16,6 +16,7 @@ import { ConversationScreen } from './src/screens/ConversationScreen';
 import { QuestScreen } from './src/screens/QuestScreen';
 import { FieldScreen } from './src/screens/FieldScreen';
 import { VocabScreen } from './src/screens/VocabScreen';
+import { AiChatScreen } from './src/screens/AiChatScreen';
 
 // Ẩn các cảnh báo môi trường thử nghiệm Expo Go không ảnh hưởng tính năng
 LogBox.ignoreLogs([
@@ -119,6 +120,19 @@ export default function App() {
               tabBarIcon: ({ color, focused }) => (
                 <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
                   <Feather name="message-circle" size={19} color={color} />
+                </View>
+              ),
+            }}
+          />
+
+          <Tab.Screen
+            name="AiChat"
+            component={AiChatScreen}
+            options={{
+              tabBarLabel: 'Trợ lý AI',
+              tabBarIcon: ({ color, focused }) => (
+                <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+                  <Feather name="message-square" size={19} color={color} />
                 </View>
               ),
             }}

@@ -18,7 +18,6 @@ import { WordContextModal } from '../components/WordContextModal';
 import { FieldPickerModal } from '../components/FieldPickerModal';
 import { NativeFeedbackModal } from '../components/NativeFeedbackModal';
 import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
-import { SituationalAssistantModal } from '../components/SituationalAssistantModal';
 import { ensureOnline } from '../services/network';
 import { ConversationMessage, ConversationSession, AITerm } from '../types';
 import {
@@ -99,7 +98,6 @@ export function ConversationScreen() {
   // Chế độ Đối thoại Trực diện Split-Screen (lật 180 độ đối diện người Đài)
   const [isSplitScreen, setIsSplitScreen] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
-  const [situationalModalVisible, setSituationalModalVisible] = useState(false);
 
   // Tra cứu từ theo ngữ cảnh
   const [wordModalVisible, setWordModalVisible] = useState(false);
@@ -499,20 +497,6 @@ export function ConversationScreen() {
           </Pressable>
 
           <View style={styles.headerBottomActions}>
-            <Pressable
-              style={styles.situationalBtnBadge}
-              onPress={async () => {
-                const online = await ensureOnline('Hỏi AI');
-                if (!online) return;
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setSituationalModalVisible(true);
-              }}
-              hitSlop={6}
-            >
-              <Feather name="compass" size={13} color="#4F46E5" />
-              <Text style={styles.situationalBtnText}>Hỏi AI</Text>
-            </Pressable>
-
             {/* Nút Chế độ Trực diện (Split-Screen) */}
             <Pressable
               style={[styles.splitModeBadge, isSplitScreen && styles.splitModeBadgeActive]}
@@ -1051,12 +1035,6 @@ export function ConversationScreen() {
         visible={settingsModalVisible}
         onClose={() => setSettingsModalVisible(false)}
       />
-
-      {/* Modal Diễn đạt theo ngữ cảnh bản xứ Đài Loan */}
-      <SituationalAssistantModal
-        visible={situationalModalVisible}
-        onClose={() => setSituationalModalVisible(false)}
-      />
     </SafeAreaView>
   );
 }
@@ -1136,23 +1114,6 @@ const styles = StyleSheet.create({
     gap: 6,
     flexShrink: 1,
     justifyContent: 'flex-end',
-  },
-  situationalBtnBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    flexShrink: 0,
-  },
-  situationalBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
   },
   splitModeBadge: {
     flexDirection: 'row',

@@ -23,6 +23,8 @@ import {
   getNotificationSettings,
   setNotificationSettings,
   NotificationSettings,
+  getModelTierSetting,
+  setModelTierSetting,
 } from '../database/repository';
 import {
   setCustomUserKeys,
@@ -30,7 +32,10 @@ import {
   testGeminiApiKey,
   getKeyQuotaInfo,
   KeyQuotaInfo,
+  getModelTier,
+  setModelTier,
 } from '../services/api';
+import { ModelTier } from '../types';
 import { syncAllSmartNotifications } from '../services/notifications';
 import { ensureOnline } from '../services/network';
 
@@ -53,6 +58,7 @@ export function ApiKeySettingsModal({
     streakEnabled: true,
     morningEnabled: true,
   });
+  const [modelTier, setModelTierState] = useState<ModelTier>('medium');
   const [isSaving, setIsSaving] = useState(false);
   const [testingStatusText, setTestingStatusText] = useState('');
   const [keyValidationMap, setKeyValidationMap] = useState<
@@ -85,16 +91,20 @@ export function ApiKeySettingsModal({
 
   const loadSettings = async () => {
     try {
-      const [savedKeys, speakEnabled, notif] = await Promise.all([
+      const [savedKeys, speakEnabled, notif, savedTier] = await Promise.all([
         getSavedApiKeys(),
         getAutoSpeakSetting(),
         getNotificationSettings(),
+        getModelTierSetting(),
       ]);
       const currentAllKeys = getGeminiKeys();
       const loadedKeys = currentAllKeys.length > 0 ? currentAllKeys : savedKeys;
       setActiveKeys(loadedKeys);
       setAutoSpeak(speakEnabled);
       setNotifSettings(notif);
+      if (savedTier) {
+        setModelTierState(savedTier);
+      }
       setKeysInput('');
 
       const initialMap: Record<string, { status: 'idle' | 'testing' | 'valid' | 'invalid'; message?: string }> = {};
@@ -108,6 +118,15 @@ export function ApiKeySettingsModal({
     } catch {
       // ignore
     }
+  };
+
+  const handleSelectTier = async (tier: ModelTier) => {
+    if (modelTier === tier) return;
+    Haptics.selectionAsync();
+    setModelTierState(tier);
+    setModelTier(tier);
+    await setModelTierSetting(tier);
+    onSettingsChanged?.();
   };
 
   const handleToggleAutoSpeak = async (value: boolean) => {
@@ -378,7 +397,48 @@ export function ApiKeySettingsModal({
               </View>
             </View>
 
-            {/* Tùy chọn 3: Quản lý Gemini API Keys & Hạn mức Quota */}
+            {/* Cấu hình Mức độ Model AI */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIconBox}>
+                  <Feather name="sliders" size={18} color="#64748B" />
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle}>Mức độ Model AI</Text>
+                </View>
+              </View>
+
+              <View style={styles.tierSelectorRow}>
+                {(['low', 'medium', 'high'] as const).map((tier) => {
+                  const isSelected = modelTier === tier;
+                  const label =
+                    tier === 'low'
+                      ? 'Tiết kiệm (Low)'
+                      : tier === 'medium'
+                      ? 'Cân bằng (Medium)'
+                      : 'Thông minh (High)';
+
+                  return (
+                    <Pressable
+                      key={tier}
+                      style={[styles.tierBtn, isSelected && styles.tierBtnActive]}
+                      onPress={() => handleSelectTier(tier)}
+                    >
+                      <Text
+                        style={[
+                          styles.tierBtnText,
+                          isSelected && styles.tierBtnTextActive,
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Tùy chọn: Quản lý Gemini API Keys & Hạn mức Quota */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.cardIconBox}>
@@ -842,5 +902,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
+  },
+  tierSelectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  tierBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tierBtnActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6366F1',
+  },
+  tierBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  tierBtnTextActive: {
+    color: '#4F46E5',
+    fontWeight: '700',
   },
 });

@@ -226,4 +226,37 @@ export interface SituationalPhraseResult {
   suggested_topic: string;
 }
 
+export type ModelTier = 'low' | 'medium' | 'high';
+
+export interface AiChatSession {
+  id: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface AiChatMessage {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  tw?: string;
+  pinyin?: string;
+  vi?: string;
+  explanation?: string;
+  created_at: number;
+  feedback?: number; // 0 = none, 1 = thumbs up, -1 = thumbs down
+  feedback_note?: string;
+}
+
+export interface AiChatFeedback {
+  id: string;
+  message_id: string;
+  original_query: string;
+  bot_response: string;
+  user_correction: string;
+  reason?: string;
+  created_at: number;
+}
+
 

@@ -15,7 +15,6 @@ import { ClickableSentence } from '../components/ClickableSentence';
 import { WordContextModal } from '../components/WordContextModal';
 import { FieldPickerModal } from '../components/FieldPickerModal';
 import { ApiKeySettingsModal } from '../components/ApiKeySettingsModal';
-import { SituationalAssistantModal } from '../components/SituationalAssistantModal';
 import { useMascotStore } from '../store/mascotStore';
 import { useVocabularyStore } from '../store/vocabularyStore';
 import { useFieldStore } from '../store/fieldStore';
@@ -36,7 +35,6 @@ export function HomeScreen() {
   const field = useFieldStore((s) => s.field);
   const [fieldModalVisible, setFieldModalVisible] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
-  const [situationalModalVisible, setSituationalModalVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcribedText, setTranscribedText] = useState('');
   const [selectedTranscribedWord, setSelectedTranscribedWord] = useState<string | null>(null);
@@ -373,20 +371,9 @@ export function HomeScreen() {
           </View>
 
           <View style={styles.actionsRow}>
-            <Pressable
-              style={styles.situationalBtn}
-              onPress={() => {
-                Haptics.selectionAsync();
-                setSituationalModalVisible(true);
-              }}
-            >
-              <Feather name="compass" size={15} color="#4F46E5" />
-              <Text style={styles.situationalBtnText}>Diễn đạt theo ngữ cảnh</Text>
-            </Pressable>
-
             <Pressable style={styles.pasteToggleBtn} onPress={togglePaste}>
               <Feather name="clipboard" size={14} color="#64748B" />
-              <Text style={styles.pasteToggleBtnText}>Dán văn bản</Text>
+              <Text style={styles.pasteToggleBtnText}>Dán văn bản từ bộ nhớ tạm</Text>
             </Pressable>
           </View>
 
@@ -463,16 +450,6 @@ export function HomeScreen() {
         scope="communication"
         onClose={() => setSelectedTranscribedWord(null)}
         onWordSaved={() => {
-          loadVocabulary();
-          loadStats();
-        }}
-      />
-
-      {/* Modal Diễn đạt theo Ngữ cảnh bản xứ */}
-      <SituationalAssistantModal
-        visible={situationalModalVisible}
-        onClose={() => setSituationalModalVisible(false)}
-        onSentenceSaved={() => {
           loadVocabulary();
           loadStats();
         }}
@@ -595,25 +572,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     marginTop: 12,
-    gap: 8,
-  },
-  situationalBtn: {
-    flex: 1.25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1.5,
-    borderColor: '#C7D2FE',
-  },
-  situationalBtnText: {
-    color: '#4F46E5',
-    fontSize: 13,
-    fontWeight: '700',
   },
   pasteToggleBtn: {
     flex: 1,

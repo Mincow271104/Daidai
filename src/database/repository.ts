@@ -8,6 +8,10 @@ import {
   PhraseCorrection,
   CustomScenario,
   DialogueTurn,
+  ModelTier,
+  AiChatSession,
+  AiChatMessage,
+  AiChatFeedback,
 } from '../types';
 import { normalizeSearchText, levenshteinDistance, cleanChineseText } from '../utils/similarity';
 import { Topic, registerTopics, DEFAULT_TOPICS } from '../constants/topics';
@@ -1437,4 +1441,157 @@ export async function togglePinField(fieldKey: string): Promise<boolean> {
 
   await setSetting('pinned_fields', JSON.stringify(updated));
   return isPinnedNow;
+}
+
+// ─── Model Tier Setting ─────────────────────────────────────────
+
+export async function getModelTierSetting(): Promise<ModelTier> {
+  const val = await getSetting('model_tier');
+  if (val === 'low' || val === 'medium' || val === 'high') {
+    return val;
+  }
+  return 'medium';
+}
+
+export async function setModelTierSetting(tier: ModelTier): Promise<void> {
+  await setSetting('model_tier', tier);
+}
+
+// ─── AI Chat Sessions & Messages ────────────────────────────────
+
+export async function getAiChatSessions(limit = 5): Promise<AiChatSession[]> {
+  const db = await getReadyDatabase();
+  return await db.getAllAsync<AiChatSession>(
+    `SELECT * FROM ai_chat_sessions ORDER BY updated_at DESC LIMIT ?`,
+    [limit]
+  );
+}
+
+export async function createAiChatSession(title: string): Promise<AiChatSession> {
+  const db = await getReadyDatabase();
+  const id = uuidv4();
+  const now = Date.now();
+  await db.runAsync(
+    `INSERT INTO ai_chat_sessions (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+    [id, title.trim() || 'Hội thoại mới', now, now]
+  );
+  // Đảm bảo chỉ giữ tối đa 5 phiên gần nhất
+  await pruneAiChatSessions(5);
+  return { id, title: title.trim() || 'Hội thoại mới', created_at: now, updated_at: now };
+}
+
+export async function updateAiChatSessionTitle(sessionId: string, title: string): Promise<void> {
+  const db = await getReadyDatabase();
+  await db.runAsync(
+    `UPDATE ai_chat_sessions SET title = ?, updated_at = ? WHERE id = ?`,
+    [title.trim(), Date.now(), sessionId]
+  );
+}
+
+export async function touchAiChatSession(sessionId: string): Promise<void> {
+  const db = await getReadyDatabase();
+  await db.runAsync(
+    `UPDATE ai_chat_sessions SET updated_at = ? WHERE id = ?`,
+    [Date.now(), sessionId]
+  );
+}
+
+export async function deleteAiChatSession(sessionId: string): Promise<void> {
+  const db = await getReadyDatabase();
+  await db.runAsync(`DELETE FROM ai_chat_messages WHERE session_id = ?`, [sessionId]);
+  await db.runAsync(`DELETE FROM ai_chat_sessions WHERE id = ?`, [sessionId]);
+}
+
+export async function pruneAiChatSessions(keepCount = 5): Promise<void> {
+  const db = await getReadyDatabase();
+  const sessions = await db.getAllAsync<{ id: string }>(
+    `SELECT id FROM ai_chat_sessions ORDER BY updated_at DESC`
+  );
+  if (sessions.length > keepCount) {
+    const toDelete = sessions.slice(keepCount).map((s) => s.id);
+    for (const id of toDelete) {
+      await db.runAsync(`DELETE FROM ai_chat_messages WHERE session_id = ?`, [id]);
+      await db.runAsync(`DELETE FROM ai_chat_sessions WHERE id = ?`, [id]);
+    }
+  }
+}
+
+export async function getAiChatMessages(sessionId: string): Promise<AiChatMessage[]> {
+  const db = await getReadyDatabase();
+  return await db.getAllAsync<AiChatMessage>(
+    `SELECT * FROM ai_chat_messages WHERE session_id = ? ORDER BY created_at ASC`,
+    [sessionId]
+  );
+}
+
+export async function insertAiChatMessage(
+  msg: Omit<AiChatMessage, 'id' | 'created_at'>
+): Promise<AiChatMessage> {
+  const db = await getReadyDatabase();
+  const id = uuidv4();
+  const now = Date.now();
+  await db.runAsync(
+    `INSERT INTO ai_chat_messages (id, session_id, role, content, tw, pinyin, vi, explanation, created_at, feedback, feedback_note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      msg.session_id,
+      msg.role,
+      msg.content,
+      msg.tw ?? null,
+      msg.pinyin ?? null,
+      msg.vi ?? null,
+      msg.explanation ?? null,
+      now,
+      msg.feedback ?? 0,
+      msg.feedback_note ?? null,
+    ]
+  );
+  await touchAiChatSession(msg.session_id);
+  return {
+    id,
+    created_at: now,
+    ...msg,
+  };
+}
+
+export async function updateAiChatMessageFeedback(
+  messageId: string,
+  feedback: number,
+  feedbackNote?: string
+): Promise<void> {
+  const db = await getReadyDatabase();
+  await db.runAsync(
+    `UPDATE ai_chat_messages SET feedback = ?, feedback_note = ? WHERE id = ?`,
+    [feedback, feedbackNote ?? null, messageId]
+  );
+}
+
+export async function insertAiChatFeedback(
+  fb: Omit<AiChatFeedback, 'id' | 'created_at'>
+): Promise<void> {
+  const db = await getReadyDatabase();
+  const id = uuidv4();
+  const now = Date.now();
+  await db.runAsync(
+    `INSERT INTO ai_chat_feedback (id, message_id, original_query, bot_response, user_correction, reason, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      fb.message_id,
+      fb.original_query,
+      fb.bot_response,
+      fb.user_correction,
+      fb.reason ?? null,
+      now,
+    ]
+  );
+}
+
+export async function getRecentAiChatFeedbacks(limit = 5): Promise<AiChatFeedback[]> {
+  const db = await getReadyDatabase();
+  return await db.getAllAsync<AiChatFeedback>(
+    `SELECT * FROM ai_chat_feedback ORDER BY created_at DESC LIMIT ?`,
+    [limit]
+  );
 }
