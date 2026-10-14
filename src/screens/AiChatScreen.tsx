@@ -31,11 +31,16 @@ import {
   getRecentAiChatFeedbacks,
   insertVocabulary,
   updateAiChatSessionTitle,
+  getSetting,
+  setSetting,
 } from '../database/repository';
 import { sendAiChatMessage, transcribeSpeech } from '../services/api';
 import { useRecorder } from '../hooks/useRecorder';
 import { speakChinese } from '../utils/speak';
 import { ensureOnline } from '../services/network';
+import { ClickableSentence } from '../components/ClickableSentence';
+import { WordContextModal } from '../components/WordContextModal';
+import { useScrollLockStore } from '../store/scrollLockStore';
 
 export function AiChatScreen() {
   const [sessions, setSessions] = useState<AiChatSession[]>([]);
@@ -44,6 +49,14 @@ export function AiChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
+
+  // 2 chế độ: Flash (nhanh, 1024 tokens) & Reasoning (suy nghĩ & tự phản biện sửa lỗi, 3000 tokens)
+  const [aiChatMode, setAiChatMode] = useState<'flash' | 'reasoning'>('flash');
+
+  // Tra từ / cụm từ theo ngữ cảnh khi kéo hoặc chạm vào câu tiếng Trung
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [selectedSentence, setSelectedSentence] = useState<string>('');
+  const isScrollLocked = useScrollLockStore((state) => state.isScrollLocked);
 
   // Modal đóng góp ý kiến / sửa lỗi (Feedback)
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
@@ -111,6 +124,24 @@ export function AiChatScreen() {
       setMessages([]);
     }
   }, [currentSession, loadMessages]);
+
+  // Khôi phục nấc gạt chế độ đã lưu
+  useEffect(() => {
+    getSetting('ai_chat_mode')
+      .then((val) => {
+        if (val === 'reasoning' || val === 'flash') {
+          setAiChatMode(val);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleToggleMode = (mode: 'flash' | 'reasoning') => {
+    if (aiChatMode === mode) return;
+    Haptics.selectionAsync();
+    setAiChatMode(mode);
+    setSetting('ai_chat_mode', mode).catch(() => {});
+  };
 
   const handleStartNewSession = async () => {
     Haptics.selectionAsync();
@@ -219,8 +250,8 @@ export function AiChatScreen() {
       // Lấy danh sách feedback sửa lỗi gần nhất để AI học hỏi
       const recentFeedbacks = await getRecentAiChatFeedbacks(4);
 
-      // Gọi API Gemini
-      const reply = await sendAiChatMessage(text, rollingHistory, recentFeedbacks);
+      // Gọi API Gemini (Flash hoặc Reasoning)
+      const reply = await sendAiChatMessage(text, rollingHistory, recentFeedbacks, aiChatMode);
 
       // Lưu câu trả lời của trợ lý
       const botMsg = await insertAiChatMessage({
@@ -379,7 +410,16 @@ export function AiChatScreen() {
                 </View>
               </View>
 
-              <Text style={styles.phraseTwText}>{item.tw}</Text>
+              {/* Câu Phồn thể Đài Loan: Hỗ trợ chạm hoặc kéo từ/cụm từ để Nghe và Phân tích */}
+              <ClickableSentence
+                sentence={item.tw}
+                onPressWord={(w) => {
+                  setSelectedWord(w);
+                  setSelectedSentence(item.tw || '');
+                }}
+                textStyle={styles.phraseTwText}
+                highlightColor="#EEF2FF"
+              />
 
               {item.pinyin && <Text style={styles.phrasePinyinText}>{item.pinyin}</Text>}
 
@@ -387,7 +427,8 @@ export function AiChatScreen() {
 
               {item.explanation && (
                 <View style={styles.explanationBox}>
-                  <Text style={styles.explanationText}>💡 {item.explanation}</Text>
+                  <Feather name="info" size={13} color="#64748B" style={styles.explanationIcon} />
+                  <Text style={styles.explanationText}>{item.explanation}</Text>
                 </View>
               )}
             </View>
@@ -486,6 +527,55 @@ export function AiChatScreen() {
         </View>
       </View>
 
+      {/* Nấc gạt 2 chế độ: Flash / Reasoning (Tối giản, icon monochrome, không chú thích) */}
+      <View style={styles.modeBar}>
+        <View style={styles.modeToggleContainer}>
+          <Pressable
+            style={[
+              styles.modePill,
+              aiChatMode === 'flash' && styles.modePillActive,
+            ]}
+            onPress={() => handleToggleMode('flash')}
+          >
+            <Feather
+              name="zap"
+              size={12}
+              color={aiChatMode === 'flash' ? '#6366F1' : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.modePillText,
+                aiChatMode === 'flash' && styles.modePillTextActive,
+              ]}
+            >
+              Flash
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.modePill,
+              aiChatMode === 'reasoning' && styles.modePillActive,
+            ]}
+            onPress={() => handleToggleMode('reasoning')}
+          >
+            <Feather
+              name="cpu"
+              size={12}
+              color={aiChatMode === 'reasoning' ? '#6366F1' : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.modePillText,
+                aiChatMode === 'reasoning' && styles.modePillTextActive,
+              ]}
+            >
+              Reasoning
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
       {/* Thông báo dạng Toast nhỏ khi lưu từ */}
       {toastMessage && (
         <View style={styles.toastContainer}>
@@ -503,6 +593,7 @@ export function AiChatScreen() {
           data={messages}
           renderItem={renderMessageItem}
           keyExtractor={(m) => m.id}
+          scrollEnabled={!isScrollLocked}
           contentContainerStyle={[
             styles.messagesContainer,
             messages.length === 0 && styles.emptyContainer,
@@ -738,6 +829,19 @@ export function AiChatScreen() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Modal tra từ / phân tích ngữ cảnh khi kéo hoặc chạm vào chữ tiếng Trung */}
+      <WordContextModal
+        visible={!!selectedWord}
+        word={selectedWord || ''}
+        fullSentence={selectedSentence}
+        fieldKey="it"
+        scope="communication"
+        onClose={() => setSelectedWord(null)}
+        onWordSaved={() => {
+          showToast('Đã lưu từ vựng vào kho ôn tập!');
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -759,6 +863,51 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     backgroundColor: '#FFFFFF',
+  },
+  modeBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  modeToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    width: '100%',
+    maxWidth: 240,
+  },
+  modePill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    gap: 6,
+  },
+  modePillActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modePillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  modePillTextActive: {
+    color: '#6366F1',
+    fontWeight: '700',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -968,11 +1117,18 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  explanationIcon: {
+    marginTop: 2,
   },
   explanationText: {
+    flex: 1,
     fontSize: 12,
     color: '#475569',
-    lineHeight: 17,
+    lineHeight: 18,
   },
   feedbackRow: {
     flexDirection: 'row',

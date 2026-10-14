@@ -373,7 +373,7 @@ export function HomeScreen() {
           <View style={styles.actionsRow}>
             <Pressable style={styles.pasteToggleBtn} onPress={togglePaste}>
               <Feather name="clipboard" size={14} color="#64748B" />
-              <Text style={styles.pasteToggleBtnText}>Dán văn bản từ bộ nhớ tạm</Text>
+              <Text style={styles.pasteToggleBtnText}>Dán văn bản</Text>
             </Pressable>
           </View>
 

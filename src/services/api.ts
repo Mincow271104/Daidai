@@ -222,6 +222,13 @@ const MODEL_POOL: string[] = Array.from(
   )
 );
 
+// 3 Model Flash-Lite được chỉ định ưu tiên cho AI Chatbot (ổn định, không tốn quota ngầm, xoay tua khi lỗi)
+export const AI_CHAT_MODELS: string[] = [
+  'gemini-3.5-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-3.1-flash-lite',
+];
+
 const RETRYABLE = new Set([400, 404, 429, 500, 502, 503, 504]);
 
 // ─── Schemas ───────────────────────────────────────────────────────────────
@@ -548,7 +555,8 @@ async function callGemini<T>(
   parts: any[],
   schema: object,
   maxTokens: number,
-  customSystem?: string
+  customSystem?: string,
+  overrideModels?: string[]
 ): Promise<T> {
   const keys = getGeminiKeys();
   if (keys.length === 0) {
@@ -572,6 +580,7 @@ async function callGemini<T>(
 
   let lastError = '';
   let hadQuotaExceeded = false;
+  const activeModels = overrideModels && overrideModels.length > 0 ? overrideModels : MODEL_POOL;
 
   // Lặp qua tất cả API Keys có sẵn (nếu key hiện tại lỗi hoặc hết quota, chuyển sang key tiếp theo)
   const totalKeysToTry = Math.max(1, keys.length);
@@ -580,8 +589,8 @@ async function callGemini<T>(
     let keySucceeded = false;
     let quotaHitOnThisKey = false;
 
-    for (let i = 0; i < MODEL_POOL.length; i++) {
-      const model = MODEL_POOL[i];
+    for (let i = 0; i < activeModels.length; i++) {
+      const model = activeModels[i];
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
 
       const generationConfig: any = {
@@ -648,8 +657,8 @@ async function callGemini<T>(
           const parsed = cleanAndParseJson<T>(raw);
           // Đưa model thành công lên đầu pool để lần gọi sau phản hồi nhanh nhất
           if (i > 0) {
-            MODEL_POOL.splice(i, 1);
-            MODEL_POOL.unshift(model);
+            activeModels.splice(i, 1);
+            activeModels.unshift(model);
           }
           keySucceeded = true;
           return parsed;
@@ -1550,12 +1559,18 @@ export const AI_CHAT_RESPONSE_SCHEMA = {
 export async function sendAiChatMessage(
   userQuery: string,
   history: { role: 'user' | 'assistant'; content: string }[] = [],
-  recentFeedbacks: AiChatFeedback[] = []
+  recentFeedbacks: AiChatFeedback[] = [],
+  mode: 'flash' | 'reasoning' = 'flash'
 ): Promise<AiChatReply> {
   const query = (userQuery || '').trim();
   if (!query) {
     throw new Error('Vui lòng nhập nội dung câu hỏi.');
   }
+
+  const isReasoning = mode === 'reasoning';
+  // Flash mode: 1200 tokens súc tích, tiết kiệm quota
+  // Reasoning mode: 3000 tokens cho phép trả lời sâu, nhiều câu mẫu và biến thể đời thường
+  const maxTokens = isReasoning ? 3000 : 1200;
 
   // 1. Rolling context window: chỉ gửi tối đa 4 tin nhắn gần nhất (2 lượt hỏi-đáp)
   const trimmedHistory = (history || []).slice(-4);
@@ -1586,6 +1601,17 @@ export async function sendAiChatMessage(
       '\n';
   }
 
+  const reasoningInstruction = isReasoning
+    ? `\n4. CHẾ ĐỘ REASONING (QUY TRÌNH TỰ PHẢN BIỆN, KIỂM TRA CHÉO & SỬA LỖI TRƯỚC KHI XUẤT KẾT QUẢ):\n` +
+      `- BƯỚC 1 (SOẠN THẢO BẢN THẢO): Lên kế hoạch câu trả lời chi tiết, câu khẩu ngữ Phồn thể tương ứng và giải thích văn hóa Đài Loan.\n` +
+      `- BƯỚC 2 (TỰ PHẢN BIỆN & KIỂM TRA CHẤT LƯỢNG): Tự đối chiếu lại bản thảo so với câu hỏi của người dùng:\n` +
+      `   * Đã đúng 100% trọng tâm và ý định của người dùng chưa?\n` +
+      `   * Có từ ngữ nào bị lẫn tiếng Trung Giản thể hoặc tiếng Trung Đại Lục không? (Tuyệt đối chỉ dùng từ ngữ chuẩn Đài Loan như: 捷運, 機車, 影片, 便當, 垃圾桶, 伺服器...).\n` +
+      `   * Pinyin có dấu thanh điệu đã chính xác từng chữ chưa?\n` +
+      `   * Bổ sung thêm các cách nói đời thường tự nhiên của người bản xứ Đài Loan và lưu ý văn hóa để câu trả lời sâu sắc, đầy đủ nhất.\n` +
+      `- BƯỚC 3 (XUẤT BẢN HOÀN THIỆN): Sửa đổi hoàn thiện các điểm chưa chuẩn và xuất kết quả cuối cùng dưới dạng JSON theo schema đã cho.`
+    : `\n4. Giữ câu trả lời súc tích, đi thẳng vào trọng tâm để tiết kiệm token tối đa.`;
+
   const systemPrompt =
     `Bạn là Trợ lý AI chuyên gia khẩu ngữ và từ vựng tiếng Trung Phồn thể Đài Loan (Taiwanese Traditional Chinese Specialist).\n\n` +
     `PHẠM VI HOẠT ĐỘNG DUY NHẤT:\n` +
@@ -1593,8 +1619,8 @@ export async function sendAiChatMessage(
     `QUY TẮC BẮT BUỘC (TỐI ƯU QUOTA & BẢO VỆ PHẠM VI):\n` +
     `1. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi KHÔNG LIÊN QUAN đến học tiếng Trung (ví dụ: lập trình, toán học, tin tức, chính trị, viết văn ngoài lề), lập tức từ chối lịch sự trong ĐÚNG 1 CÂU DƯỚI 15 TỪ vào trường "content": "Tôi là trợ lý tiếng Trung Phồn thể Đài Loan, chỉ hỗ trợ học tiếng và từ vựng." (Tuyệt đối không điền các trường tw, pinyin, vi, explanation).\n` +
     `2. LUÔN DÙNG CHỮ PHỒN THỂ ĐÀI LOAN (繁體字), KHÔNG BAO GIỜ dùng chữ Giản thể (简体字), KHÔNG dùng từ ngữ Đại Lục (ví dụ dùng: 捷運, 機車, 計程車, 便當, 買單, 垃圾桶, 影片...).\n` +
-    `3. Khi người dùng hỏi cách nói, dịch câu, hoặc hỏi từ vựng theo tình huống: Hãy cung cấp 'tw' (câu/từ Phồn thể chuẩn Đài Loan nhất), 'pinyin' (có dấu thanh), 'vi' (nghĩa tiếng Việt tự nhiên), 'explanation' (lưu ý ngữ cảnh / văn hóa Đài súc tích dưới 35 từ), và 'content' (lời giải đáp thân thiện, súc tích).\n` +
-    `4. Giữ câu trả lời súc tích, đi thẳng vào trọng tâm để tiết kiệm token tối đa.` +
+    `3. Khi người dùng hỏi cách nói, dịch câu, hoặc hỏi từ vựng theo tình huống: Hãy cung cấp 'tw' (câu/từ Phồn thể chuẩn Đài Loan nhất), 'pinyin' (có dấu thanh), 'vi' (nghĩa tiếng Việt tự nhiên), 'explanation' (lưu ý ngữ cảnh / văn hóa Đài súc tích), và 'content' (lời giải đáp thân thiện, súc tích).` +
+    reasoningInstruction +
     feedbackSection;
 
   const promptUser = `${historySection}Người dùng hỏi: "${query}"\n\nHãy trả lời bằng JSON theo schema.`;
@@ -1603,8 +1629,9 @@ export async function sendAiChatMessage(
     const reply = await callGemini<AiChatReply>(
       [{ text: promptUser }],
       AI_CHAT_RESPONSE_SCHEMA,
-      1500,
-      systemPrompt
+      maxTokens,
+      systemPrompt,
+      AI_CHAT_MODELS
     );
     return reply;
   } catch (err: any) {
