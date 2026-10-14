@@ -9,17 +9,45 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-26
+    timeout-minutes: 60
+
     steps:
-      - name: Verify Xcode & Swift Version
+      - name: Verify Xcode and Swift
         run: |
-          if [ -d "/Applications/Xcode_16.4.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.4.app
-          elif [ -d "/Applications/Xcode_16.3.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.3.app
-          fi
+          sudo xcode-select --switch /Applications/Xcode.app
+
+          echo "Selected Xcode:"
           xcodebuild -version
+
+          echo "Installed Swift:"
           swift --version
+
+          python3 - <<'PY'
+          import re
+          import subprocess
+          import sys
+
+          output = subprocess.check_output(
+              ["swift", "--version"],
+              text=True
+          )
+
+          match = re.search(r"Swift version (\d+)\.(\d+)", output)
+
+          if not match:
+              sys.exit("ERROR: Cannot detect installed Swift version.")
+
+          version = tuple(map(int, match.groups()))
+
+          if version < (6, 2):
+              sys.exit(
+                  f"ERROR: Swift 6.2 or newer is required, "
+                  f"but Swift {version[0]}.{version[1]} is installed."
+              )
+
+          print(f"Swift {version[0]}.{version[1]} meets the minimum requirement.")
+          PY
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,12 +56,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
       - name: Install dependencies
         run: npm install
 
-      - name: Expo Prebuild (Generate iOS native project)
+      - name: Expo Prebuild
         run: npx expo prebuild --platform ios --clean
 
       - name: Setup Node Binary for Xcode
@@ -45,19 +73,33 @@ jobs:
         run: |
           cd ios
           pod install
-          # Tắt Sandbox của Xcode 16 trên Pods để ReactCodegen được phép ghi file
-          sed -i '' 's/ENABLE_USER_SCRIPT_SANDBOXING = YES/ENABLE_USER_SCRIPT_SANDBOXING = NO/g' Pods/Pods.xcodeproj/project.pbxproj || true
+
+          # Disable Xcode script sandbox for Pods.
+          sed -i '' \
+            's/ENABLE_USER_SCRIPT_SANDBOXING = YES/ENABLE_USER_SCRIPT_SANDBOXING = NO/g' \
+            Pods/Pods.xcodeproj/project.pbxproj || true
 
       - name: Build Unsigned iOS App
         run: |
+          set -euo pipefail
           cd ios
-          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
-          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json 2>/dev/null | python3 -c "import sys, json; data=json.load(sys.stdin); print((data.get('workspace', {}).get('schemes') or data.get('project', {}).get('schemes') or ['DaiDai'])[0])" 2>/dev/null || echo "DaiDai")
+
+          WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" -type d | head -n 1)
+
+          if [ -z "$WORKSPACE" ]; then
+            echo "ERROR: No Xcode workspace found."
+            exit 1
+          fi
+
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json 2>/dev/null \
+            | python3 -c 'import sys,json; d=json.load(sys.stdin); print((d.get("workspace",{}).get("schemes") or d.get("project",{}).get("schemes") or ["DaiDai"])[0])' \
+            || echo "DaiDai")
+
           echo "Selected Workspace: $WORKSPACE"
           echo "Selected Scheme: $SCHEME"
 
-          set -o pipefail
-          xcodebuild -workspace "$WORKSPACE" \
+          xcodebuild \
+            -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
             -configuration Release \
             -destination "generic/platform=iOS" \
@@ -68,18 +110,31 @@ jobs:
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
             build 2>&1 | tee xcodebuild.log || {
-              echo "❌ BUILD FAILED! DUMPING RELEVANT ERRORS:"
-              grep -E "error:|fatal error:|BUILD FAILED" -A 3 -B 1 xcodebuild.log || tail -n 100 xcodebuild.log
+              echo "BUILD FAILED. Relevant errors:"
+              grep -E "error:|fatal error:|BUILD FAILED" \
+                -A 3 -B 1 xcodebuild.log || tail -n 100 xcodebuild.log
               exit 1
             }
 
       - name: Package into IPA
         run: |
+          set -euo pipefail
+
+          APP_DIR="ios/build/Build/Products/Release-iphoneos"
+          APP_PATH=$(find "$APP_DIR" -maxdepth 1 -name "*.app" -type d | head -n 1)
+
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: Compiled .app not found in $APP_DIR"
+            exit 1
+          fi
+
+          echo "Found compiled app: $APP_PATH"
+
           mkdir -p Payload
-          APP_PATH=$(find ios/build -name "*.app" -type d | head -n 1)
-          echo "Found compiled app at: $APP_PATH"
           cp -R "$APP_PATH" Payload/
+          rm -f daidai.ipa
           zip -qr daidai.ipa Payload
+
           ls -lh daidai.ipa
 
       - name: Upload IPA Artifact
