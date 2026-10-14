@@ -199,16 +199,25 @@ export function getLocalGpuCandidates(): string[] {
   return Array.from(new Set(candidates));
 }
 
-// Thứ tự thử model: Ưu tiên model thông minh chuẩn (Gemini 2.5 Flash / Flash Latest) lên đầu,
-// tự động fallback sang các model nhẹ hơn khi chạm hạn mức, xoay tua linh hoạt
+// Thứ tự thử model:
+// 1. gemini-3.5-flash-lite: Model thế hệ mới chuẩn GA của Google, phản hồi siêu tốc (<900ms), 0 token suy nghĩ ngầm (tiết kiệm quota tối đa)
+// 2. gemini-flash-lite-latest: Bản fallback thế hệ mới (<900ms), 0 token suy nghĩ ngầm
+// 3. gemini-3.1-flash-lite: Bản flash-lite dự phòng
+// 4. gemini-3.5-flash: Model flash tiêu chuẩn cao cấp
+// 5. gemini-3.6-flash: Model flash dự phòng
+// 6. gemini-3.8-flash: Model flash mở rộng
+// 7. gemini-flash-latest: Bản latest
 const MODEL_POOL: string[] = Array.from(
   new Set(
     [
       process.env.EXPO_PUBLIC_GEMINI_MODEL,
-      'gemini-2.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-lite-latest',
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.6-flash',
+      'gemini-3.8-flash',
       'gemini-flash-latest',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
     ].filter(Boolean) as string[]
   )
 );
