@@ -246,11 +246,14 @@ export interface AiChatKeyWord {
   meaning: string;
 }
 
+export type PhraseRole = 'recommended' | 'quote' | 'analysis' | 'vocab';
+
 export interface AiChatMetadata {
   thought_summary?: string;
   variations?: AiChatVariation[];
   key_words?: AiChatKeyWord[];
   cultural_insight?: string;
+  phrase_role?: PhraseRole;
 }
 
 export interface AiChatMessage {
@@ -262,6 +265,7 @@ export interface AiChatMessage {
   pinyin?: string;
   vi?: string;
   explanation?: string;
+  phrase_role?: PhraseRole;
   metadata?: string; // JSON string của AiChatMetadata (dành cho chế độ Reasoning)
   created_at: number;
   feedback?: number; // 0 = none, 1 = thumbs up, -1 = thumbs down

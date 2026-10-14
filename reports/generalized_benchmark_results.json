@@ -1,0 +1,522 @@
+[
+  {
+    "testCase": {
+      "id": "TC7",
+      "name": "Kiểm tra ngữ pháp (我昨天有去過那間店了)",
+      "category": "Regression",
+      "prompt": "Câu 「我昨天有去過那間店了」 có tự nhiên trong tiếng Hoa Đài Loan không? Hãy giải thích vai trò của 「有」、「過」 và 「了」, phân biệt câu sai ngữ pháp với câu hơi dư hoặc ít tự nhiên. Đề xuất cách nói tự nhiên hơn mà không khẳng định quá mức.",
+      "expectedRole": "analysis",
+      "expectedBadge": "Câu đang phân tích",
+      "criteria": "Nhận diện role analysis; phân tích sự chồng chéo giữa 昨天, 有, 過, 了; đề xuất câu tự nhiên hơn; không khẳng định sai ngữ pháp một cách cực đoan."
+    },
+    "flash": {
+      "latencyMs": 1781,
+      "tokens": {
+        "candidates": 250,
+        "thinking": 0
+      },
+      "reply": {
+        "content": "Câu này không hẳn là sai ngữ pháp nghiêm trọng trong khẩu ngữ hàng ngày, nhưng về mặt diễn đạt thì hơi rườm rà và ít tự nhiên. Trong tiếng Trung Đài Loan, việc chồng chéo các dấu hiệu quá khứ trong cùng một câu là điều thường gặp khi người nói muốn nhấn mạnh, nhưng nó tạo ra sự dư thừa thành phần.",
+        "explanation": "Trong câu này, '有' dùng để nhấn mạnh hành động đã xảy ra, '過' chỉ trải nghiệm từng đến, còn '了' đánh dấu sự hoàn thành hoặc thay đổi trạng thái. Khi dùng '有...過' đã mang ý nghĩa quá khứ rõ ràng, việc nhồi nhét thêm '了' ở cuối câu tạo nên sự trùng lặp (vừa nhấn mạnh đã làm, vừa khẳng định đã xong).",
+        "phrase_role": "analysis",
+        "pinyin": "Wǒ zuótiān yǒu qùguò nà jiān diàn le",
+        "tw": "我昨天有去過那間店了",
+        "vi": "Hôm qua tôi có từng đến cửa hàng đó rồi."
+      },
+      "uiState": {
+        "role": "analysis",
+        "label": "Câu đang phân tích",
+        "badgeStyleKey": "phraseBadgeAnalysis",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 1613,
+      "p2LatencyMs": 9662,
+      "totalLatencyMs": 11275,
+      "totalTokens": 1072,
+      "draft": "Câu 「我昨天有去過那間店了」 về mặt ngữ pháp thuần túy không hẳn là sai hoàn toàn trong giao tiếp hàng ngày, nhưng lại không tự nhiên và có sự dư thừa (redundancy) về mặt thời gian và thể trạng trong tiếng Hoa Đài Loan. Phân tích các thành phần: 「有」 dùng để nhấn mạnh hành động đã xảy ra, 「過」 chỉ trải nghiệm (từng đến), và 「了」 chỉ sự thay đổi trạng thái hoặc hoàn thành. Tuy nhiên, sự kết hợp giữa từ chỉ thời gian cụ thể trong quá khứ là 「昨天」 (hôm qua) với 「過」 và 「了」 tạo nên sự mâu thuẫn nhẹ và rườm rà, vì \"hôm qua\" là một mốc thời gian xác định chứ không mang tính trải nghiệm chung chung, đồng thời 「了」 ở cuối câu là thừa thãi khi đã có 「過」. Cách nói tự nhiên và thuận miệng hơn tùy theo ý định của bạn: nếu muốn nhấn mạnh đã đi rồi, người Đài Loan thường nói 「我昨天去過那間店了」 (bỏ 有) hoặc đơn giản hơn là kể sự việc 「我昨天去了那間店」 hoặc 「我昨天去过那間店」.",
+      "auditNotes": "Đã kiểm tra và sửa lỗi chữ Giản thể '过' trong bản nháp thành Phồn thể '過'. Đảm bảo cấu trúc phân tích ngữ pháp đúng yêu cầu, định danh role là 'analysis', giải thích rõ sự khác biệt giữa câu rườm rà và câu sai ngữ pháp.",
+      "reply": {
+        "content": "Trong tiếng Hoa Đài Loan, câu 「我昨天有去過那間店了」 không hẳn là sai ngữ pháp tuyệt đối và người nghe vẫn hiểu được, nhưng nó bị đánh giá là không tự nhiên và dư thừa (redundancy) về mặt ngữ nghĩa. Phân tích các thành phần: '昨天' là mốc thời gian cụ thể trong quá khứ; '有...過' dùng để nhấn mạnh trải nghiệm từng làm gì đó (vốn mang tính tổng quát, ít đi kèm mốc thời gian cụ thể); trợ từ '了' ở cuối câu chồng chéo chức năng hoàn thành với '過'. Việc nhồi nhét cả 3 yếu tố này vào một câu có thời gian xác định tạo nên cảm giác nặng nề và rườm rà. Đây là lỗi diễn đạt kém tự nhiên trong khẩu ngữ chứ không phải lỗi sai cấu trúc cốt lõi.",
+        "tw": "我昨天有去過那間店了",
+        "pinyin": "Wǒ zuótiān yǒu qù guò nà jiān diàn le",
+        "vi": "Hôm qua tôi có từng đến cửa hàng đó rồi.",
+        "explanation": "Câu do người dùng đưa ra để phân tích; câu này chứa nhiều yếu tố thời gian và thể trạng chồng chéo nên không tự nhiên.",
+        "phrase_role": "analysis",
+        "metadata": "{\"thought_summary\":\"Câu hỏi mổ xẻ một lỗi diễn đạt rất phổ biến của người học: lạm dụng kết hợp quá nhiều từ chỉ thể/thời gian trong một câu có mốc thời gian cụ thể (昨天). Người bản xứ hiểu được nhưng cảm thấy rườm rà, không tự nhiên.\",\"variations\":[{\"tw\":\"我昨天去過那間店\",\"pinyin\":\"Wǒ zuótiān qù guò nà jiān diàn\",\"vi\":\"Hôm qua tôi đã từng đến cửa hàng đó.\",\"tag\":\"Tự nhiên hơn (Nhấn mạnh trải nghiệm)\"},{\"tw\":\"我昨天去了那間店\",\"pinyin\":\"Wǒ zuótiān qù le nà jiān diàn\",\"vi\":\"Hôm qua tôi đã đi cửa hàng đó.\",\"tag\":\"Tự nhiên nhất (Kể sự việc đơn thuần)\"}],\"key_words\":[{\"word\":\"有...過\",\"pinyin\":\"yǒu... guò\",\"meaning\":\"Diễn tả trải nghiệm từng xảy ra trong quá khứ.\"},{\"word\":\"了\",\"pinyin\":\"le\",\"meaning\":\"Trợ từ ngữ khí biểu thị hành động đã hoàn thành hoặc thay đổi trạng thái.\"}],\"cultural_insight\":\"Người Đài Loan rất chú trọng sự gọn gàng và thuận miệng trong giao tiếp hàng ngày. Khi đã có mốc thời gian cụ thể như 'hôm qua' (昨天), họ thường ưu tiên dùng dạng kể sự việc đơn giản thay vì chồng chất các từ chỉ thể trạng (有, 過, 了) gây cảm giác rườm rà.\",\"phrase_role\":\"analysis\"}"
+      },
+      "uiState": {
+        "role": "analysis",
+        "label": "Câu đang phân tích",
+        "badgeStyleKey": "phraseBadgeAnalysis",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasThought": true,
+        "hasVariations": true,
+        "variationsCount": 2,
+        "hasVocab": true,
+        "vocabCount": 2,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  },
+  {
+    "testCase": {
+      "id": "TC9",
+      "name": "Từ vựng địa phương 統編",
+      "category": "Regression",
+      "prompt": "Khi đi mua đồ ở Đài Loan, tôi muốn xin hóa đơn có ghi mã số thuế công ty để về thanh toán lại thì nói thế nào? Hãy giải thích rõ \"統編\" là gì.",
+      "expectedRole": "recommended",
+      "expectedBadge": "Câu khuyên dùng (Chuẩn Đài)",
+      "criteria": "Đúng góc nhìn người mua (我要打統編); phân biệt 統編 (mã số 8 chữ số) vs 統一發票 (hóa đơn); role recommended."
+    },
+    "flash": {
+      "latencyMs": 1584,
+      "tokens": {
+        "candidates": 220,
+        "thinking": 0
+      },
+      "reply": {
+        "content": "Ở Đài Loan, khi bạn mua hàng và muốn công ty thanh toán lại, bạn cần xin hóa đơn có ghi mã số thuế của công ty. Thuật ngữ \"統編\" (tǒngbiān) là viết tắt của \"統一編號\" (thống nhất biên hiệu), chính là mã số thuế 8 chữ số dùng chung cho các doanh nghiệp và tổ chức tại Đài Loan. Khi thanh toán, bạn chỉ cần đọc hoặc đưa dãy số này cho thu ngân.",
+        "explanation": "Câu nói khuyên dùng giúp bạn dễ dàng yêu cầu thu ngân in mã số thuế công ty lên hóa đơn điện tử (發票).",
+        "phrase_role": "recommended",
+        "pinyin": "Qǐng bāng wǒ dǎ tǒngbiān, tǒngbiān shì...",
+        "tw": "請幫我打統編，統編是...",
+        "vi": "Hãy giúp tôi nhập mã số thuế công ty, mã số thuế là..."
+      },
+      "uiState": {
+        "role": "recommended",
+        "label": "Câu mẫu chuẩn Đài",
+        "badgeStyleKey": "phraseBadgeRecommended",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 3468,
+      "p2LatencyMs": 7917,
+      "totalLatencyMs": 11385,
+      "totalTokens": 720,
+      "draft": "統編 (tǒngbiān) là viết tắt của 統一編號 (mã số thuế doanh nghiệp gồm 8 chữ số tại Đài Loan), dùng để kê khai thuế và thanh toán lại chi phí công ty. Khi đi mua hàng, nhân viên thường sẽ hỏi bạn: 要統編嗎？ (Yào tǒngbiān ma? - Có cần mã số thuế không?). Lúc này bạn chỉ cần trả lời: 要，統編是 [Đọc 8 chữ số mã số thuế] (Yào, tǒngbiān shì...). Hoặc bạn có thể chủ động nói trước khi thanh toán: 您好，請幫我打統編，統編是... (Nín hǎo, qǐng bāng wǒ dǎ tǒngbiān, tǒngbiān shì... - Xin chào, vui lòng in mã số thuế công ty giúp tôi, mã số là...).",
+      "auditNotes": "Bản nháp đã chính xác, sử dụng đúng từ vựng chuyên dụng tại Đài Loan như 統編 và 打統編. Đã cấu trúc lại dữ liệu theo đúng schema yêu cầu.",
+      "reply": {
+        "content": "統編 là viết tắt của 統一編號 (mã số thuế doanh nghiệp gồm 8 chữ số tại Đài Loan), dùng để kê khai thuế và thanh toán lại chi phí công ty. Khi đi mua hàng, nhân viên thu ngân thường sẽ hỏi bạn: 要統編嗎？ (Yào tǒngbiān ma? - Có cần mã số thuế không?). Lúc này bạn chỉ cần trả lời hoặc chủ động yêu cầu trước khi thanh toán.",
+        "tw": "請幫我打統編，統編是...",
+        "pinyin": "Qǐng bāng wǒ dǎ tǒngbiān, tǒngbiān shì...",
+        "vi": "Xin vui lòng nhập mã số thuế công ty giúp tôi, mã số là...",
+        "explanation": "Câu nói chủ động yêu cầu thu ngân in mã số thuế doanh nghiệp lên hóa đơn.",
+        "phrase_role": "recommended",
+        "metadata": "{\"thought_summary\":\"Khi mua sắm hoặc sử dụng dịch vụ tại Đài Loan để lấy hóa đơn thanh toán lại cho công ty, bạn cần cung cấp 統編 (mã số thuế 8 chữ số). Nhân viên thu ngân thường sẽ hỏi '要統編嗎？' và bạn chỉ cần dùng mẫu câu yêu cầu in mã số thuế.\",\"variations\":[{\"tw\":\"要統編嗎？\",\"pinyin\":\"Yào tǒngbiān ma?\",\"vi\":\"Bạn có cần mã số thuế công ty không?\",\"tag\":\"Câu hỏi của thu ngân\"},{\"tw\":\"要，統編是...\",\"pinyin\":\"Yào, tǒngbiān shì...\",\"vi\":\"Có, mã số thuế là...\",\"tag\":\"Câu trả lời\"}],\"key_words\":[{\"word\":\"統編\",\"pinyin\":\"tǒngbiān\",\"meaning\":\"Mã số thuế doanh nghiệp gồm 8 chữ số tại Đài Loan.\"},{\"word\":\"打統編\",\"pinyin\":\"dǎ tǒngbiān\",\"meaning\":\"In hoặc nhập mã số thuế lên hóa đơn.\"}],\"cultural_insight\":\"Hóa đơn (發票) tại Đài Loan có mã số dự thưởng xổ số. Khi lấy 統編 (mã số thuế công ty), hóa đơn đó được ghi nhận cho doanh nghiệp và sẽ không thể dùng để tham gia quay số trúng thưởng cá nhân.\",\"phrase_role\":\"recommended\"}"
+      },
+      "uiState": {
+        "role": "recommended",
+        "label": "Câu khuyên dùng (Chuẩn Đài)",
+        "badgeStyleKey": "phraseBadgeRecommended",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasThought": true,
+        "hasVariations": true,
+        "variationsCount": 2,
+        "hasVocab": true,
+        "vocabCount": 2,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  },
+  {
+    "testCase": {
+      "id": "TC12",
+      "name": "Ý ngầm công sở (這件事再看看好了)",
+      "category": "Regression",
+      "prompt": "Trong cuộc họp với đối tác Đài Loan, khi tôi đề xuất phương án mới, họ nói: \"這件事再看看好了\". Câu này có phải là họ từ chối tôi không?",
+      "expectedRole": "quote",
+      "expectedBadge": "Câu trích dẫn (Đối tác nói)",
+      "criteria": "Role quote; Epistemic Humility (không mặc định là từ chối); đưa ra các khả năng khách quan."
+    },
+    "flash": {
+      "latencyMs": 1448,
+      "tokens": {
+        "candidates": 191,
+        "thinking": 0
+      },
+      "reply": {
+        "content": "Đây là câu cửa miệng mang tính uyển chuyển của người Đài Loan. Nó chưa hẳn là sự từ chối tuyệt đối, mà thường phản ánh sự dè dặt, chưa muốn chốt ngay hoặc cần thêm thời gian cân nhắc. Tuy nhiên, trong môi trường công sở, nó có xu hướng nghiêng về việc hoãn lại vô thời hạn hoặc từ chối khéo để giữ thể diện cho bạn.",
+        "explanation": "Trong giao tiếp kinh doanh tại Đài Loan, các câu nói giảm nhẹ như '再看看' giúp tránh tạo không khí căng thẳng hoặc đối đầu trực diện.",
+        "phrase_role": "quote",
+        "pinyin": "Zhè jiàn shì zài kàn kàn hǎo le",
+        "tw": "這件事再看看好了",
+        "vi": "Việc này để xem xét lại sau đã."
+      },
+      "uiState": {
+        "role": "quote",
+        "label": "Câu trích dẫn (Đối tác nói)",
+        "badgeStyleKey": "phraseBadgeQuote",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 4639,
+      "p2LatencyMs": 9372,
+      "totalLatencyMs": 14011,
+      "totalTokens": 984,
+      "draft": "Trong văn hóa làm việc tại Đài Loan, câu \"這件事再看看好了\" không hẳn là một lời từ chối tuyệt đối, mà thường mang sắc thái hoãn binh hoặc xã giao. Tầng nghĩa thứ nhất là nghĩa đen: họ cần thời gian để xem xét lại vấn đề. Tầng nghĩa ẩn ý: họ chưa sẵn sàng đồng ý ngay tại thời điểm đó do cần đánh giá lại rủi ro, xin ý kiến cấp trên hoặc chưa thấy rõ ưu điểm của phương án. Cách nói này giúp họ giữ thể diện cho bạn và duy trì không khí ngoại giao hòa nhã, tránh đóng sầm cửa cuộc đàm phán. Do đó, bạn không nên vội kết luận đây là từ chối chắc chắn hay chắc chắn sẽ triển khai, mà cần quan sát thêm các bước tiếp theo hoặc chủ động cung cấp thêm thông tin làm rõ giá trị phương án.",
+      "auditNotes": "Xác định đúng vai trò quote cho câu nói của đối tác. Bổ sung đầy đủ pinyin và dịch nghĩa cho primary_phrase, trích xuất từ khóa cốt lõi và đảm bảo tính khách quan theo đúng chuẩn văn hóa Đài Loan.",
+      "reply": {
+        "content": "Trong văn hóa làm việc tại Đài Loan, câu '這件事再看看好了' không hẳn là một lời từ chối tuyệt đối, mà thường mang sắc thái hoãn binh hoặc xã giao. Tầng nghĩa thứ nhất là họ cần thời gian để xem xét lại vấn đề một cách kỹ lưỡng hơn. Tầng nghĩa ẩn ý là họ chưa sẵn sàng đồng ý ngay tại thời điểm đó do cần đánh giá lại rủi ro, xin ý kiến cấp trên hoặc phương án chưa hoàn toàn thuyết phục. Cách nói này giúp họ giữ thể diện cho bạn và duy trì không khí ngoại giao hòa nhã, tránh đóng sầm cửa cuộc đàm phán. Do đó, bạn không nên vội kết luận đây là từ chối phũ phàng hay chắc chắn sẽ triển khai, mà nên quan sát thêm các bước tiếp theo hoặc chủ động cung cấp thêm thông tin làm rõ giá trị phương án.",
+        "tw": "這件事再看看好了",
+        "pinyin": "Zhè jiàn shì zài kàn kàn hǎo le",
+        "vi": "Việc này cứ để xem xét lại đã.",
+        "explanation": "Câu nói cửa miệng mang tính hoãn binh, chưa vội đồng ý nhưng cũng không từ chối trực diện, giúp duy trì không khí hòa nhã.",
+        "phrase_role": "quote",
+        "metadata": "{\"thought_summary\":\"Giải thích rõ sắc thái hoãn binh và giữ thể diện của cụm từ '再看看好了' trong công sở Đài Loan, giúp người học đọc vị đúng tình huống và chuẩn bị bước ứng xử tiếp theo.\",\"variations\":[{\"tw\":\"這部分我們可能需要再評估一下。\",\"pinyin\":\"Zhè bùfen wǒmen kěnéng xūyào zài pínggū yíxià.\",\"vi\":\"Phần này chúng tôi có lẽ cần đánh giá lại một chút.\",\"tag\":\"Đánh giá lại\"},{\"tw\":\"我們先內部討論看看再回覆您。\",\"pinyin\":\"Wǒmen xiān nèibù tǎolùn kàn kàn zài huífù nín.\",\"vi\":\"Chúng tôi sẽ thảo luận nội bộ trước rồi phản hồi lại anh/chị sau.\",\"tag\":\"Thảo luận nội bộ\"}],\"key_words\":[{\"word\":\"再看看\",\"pinyin\":\"zài kàn kàn\",\"meaning\":\"xem xét lại, để tính sau (cách nói hoãn binh)\"},{\"word\":\"好了\",\"pinyin\":\"hǎo le\",\"meaning\":\"trợ từ cuối câu biểu thị sự kết thúc nhẹ nhàng hoặc chốt lại vấn đề tạm thời\"}],\"cultural_insight\":\"Trong giao tiếp kinh doanh tại Đài Loan, việc từ chối trực diện rất hiếm khi xảy ra vì người ta luôn muốn giữ thể diện cho đối phương và duy trì mối quan hệ lâu dài. Các cụm từ như '再看看' (để xem xét lại) thường là tín hiệu cho thấy cần thêm thời gian hoặc cần cải thiện tính thuyết phục của phương án.\",\"phrase_role\":\"quote\"}"
+      },
+      "uiState": {
+        "role": "quote",
+        "label": "Câu trích dẫn (Đối tác nói)",
+        "badgeStyleKey": "phraseBadgeQuote",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasThought": true,
+        "hasVariations": true,
+        "variationsCount": 2,
+        "hasVocab": true,
+        "vocabCount": 2,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  },
+  {
+    "testCase": {
+      "id": "NEW-1",
+      "name": "Ý ngầm công sở mới (這個想法滿特別的，我們先記下來)",
+      "category": "Unseen - Pragmatic Quote",
+      "prompt": "Sếp người Đài Loan nhắn cho tôi: \"這個想法滿特別的，我們先記下來。\" Câu này có ý nghĩa gì trong môi trường công sở Đài Loan? Có phải là sếp đang khen và sẽ triển khai không?",
+      "expectedRole": "quote",
+      "expectedBadge": "Câu trích dẫn (Đối tác nói)",
+      "criteria": "Role quote; không suy diễn một chiều (không mặc định là tán thành triển khai ngay hay bác bỏ); phân biệt ghi nhận lịch sự vs tạm gác lại; lưu ý quan sát động thái tiếp theo."
+    },
+    "flash": {
+      "latencyMs": 1685,
+      "tokens": {
+        "candidates": 265,
+        "thinking": 0
+      },
+      "reply": {
+        "content": "Trong môi trường công sở Đài Loan, câu nói này thường mang tính ngoại giao và trung lập, không khẳng định là sẽ triển khai hay khen ngợi thực lòng. \"特別\" (đặc biệt) có thể là khen nhưng cũng là cách nói giảm nói tránh cho một ý tưởng quá khác thường hoặc khó khả thi. Cụm từ \"先記下來\" (ghi lại trước đã) là một cách từ chối khéo hoặc hoãn binh kinh điển, nghĩa là lưu hồ sơ hoặc ghi nhận chứ chưa có kế hoạch thực hiện ngay. Để biết chính xác, bạn cần quan sát thêm thái độ và các bước hành động tiếp theo của sếp.",
+        "explanation": "Câu nói này thể hiện sự lịch sự mang tính xã giao công sở. Sếp ghi nhận sự đóng góp ý kiến của bạn nhưng chưa đưa ra cam kết hành động.",
+        "phrase_role": "quote",
+        "pinyin": "Zhège xiǎngfǎ mǎn tèbié de, wǒmen xiān jì xiàlái.",
+        "tw": "這個想法滿特別的，我們先記下來。",
+        "vi": "Ý tưởng này khá đặc biệt đấy, chúng ta cứ ghi lại trước đã."
+      },
+      "uiState": {
+        "role": "quote",
+        "label": "Câu trích dẫn (Đối tác nói)",
+        "badgeStyleKey": "phraseBadgeQuote",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 7327,
+      "p2LatencyMs": 9795,
+      "totalLatencyMs": 17122,
+      "totalTokens": 1043,
+      "draft": "Trong môi trường công sở Đài Loan, câu nói \"這個想法滿特別的，我們先記下來。\" (Ý tưởng này khá đặc biệt/độc đáo, chúng ta cứ ghi lại trước đã) không hẳn là một lời khen tuyệt đối và cũng chưa chắc sẽ được triển khai ngay. Cụ thể, câu này mang các tầng ý nghĩa và bối cảnh như sau: 1. Giữ lại nguyên văn câu nói để phân tích: \"這個想法滿特別的，我們先記下來。\" 2. Nghĩa đen và ẩn ý xã giao: Từ \"特別\" (đặc biệt) ở đây là một từ đệm mang tính trung lập, dùng để công nhận rằng ý tưởng của bạn khác lạ hoặc chưa từng có ai đề cập, tránh việc chê bai trực diện. Cụm từ \"我們先記下來\" (chúng ta ghi lại trước đã) thường là một văn hóa giao tiếp khéo léo để từ chối hoặc hoãn lại. Nó có nghĩa là ghi nhận sự đóng góp của bạn vào biên bản cuộc họp hoặc danh sách ý tưởng, nhưng hiện tại chưa có kế hoạch thực thi cụ thể. 3. Kết luận: Sếp chưa chắc đã triển khai ý tưởng này. Đây thường là cách phản hồi lịch sự để ghi nhận nỗ lực của nhân viên mà không làm tổnو tinh thần, đồng thời gác lại vấn đề để ưu tiên các việc khác quan trọng hơn.",
+      "auditNotes": "Đã chuẩn hóa bản nháp thành cấu trúc JSON hợp lệ, định danh đúng role='quote' cho câu trích dẫn của sếp, bổ sung pinyin đầy đủ, chuẩn xác và tinh chỉnh phân tích theo hướng khách quan, không khẳng định cực đoan.",
+      "reply": {
+        "content": "Trong môi trường công sở Đài Loan, câu nói '這個想法滿特別的，我們先記下來。' không hẳn là một lời khen tuyệt đối và cũng chưa chắc sẽ được triển khai ngay lập tức. Đây là một cách phản hồi mang tính ngoại giao công sở nhằm đạt được hai mục đích: ghi nhận sự đóng góp của nhân viên để giữ hòa khí và tinh thần làm việc, đồng thời khéo léo gác lại vấn đề (hoãn binh) khi chưa có kế hoạch thực thi cụ thể. Từ '特別' (đặc biệt) đôi khi là một cách nói giảm nói tránh cho việc ý tưởng quá mới lạ, khác thường hoặc chưa phù hợp với ưu tiên hiện tại.",
+        "tw": "這個想法滿特別的，我們先記下來。",
+        "pinyin": "Zhège xiǎngfǎ mǎn tèbié de, wǒmen xiān jì xiàlái.",
+        "vi": "Ý tưởng này khá đặc biệt, chúng ta cứ ghi lại trước đã.",
+        "explanation": "Câu cửa miệng mang tính xã giao công sở, vừa ghi nhận nỗ lực vừa là tín hiệu hoãn binh, chưa cam kết triển khai ngay.",
+        "phrase_role": "quote",
+        "metadata": "{\"thought_summary\":\"Giải mã câu nói xã giao kinh điển của sếp Đài Loan: vừa ghi nhận tinh thần của nhân viên vừa là tín hiệu hoãn binh, chưa cam kết triển khai ngay lập tức.\",\"variations\":[{\"tw\":\"這個點子蠻有創意的，我們再研究看看。\",\"pinyin\":\"Zhège diǎnzǐ mán yǒu chuàngyì de, wǒmen zài yánjiū kànkan.\",\"vi\":\"Ý tưởng này khá sáng tạo, để chúng tôi nghiên cứu thêm.\",\"tag\":\"Xã giao hoãn binh\"}],\"key_words\":[{\"word\":\"特別\",\"pinyin\":\"tèbié\",\"meaning\":\"Đặc biệt (trong công sở có thể mang sắc thái trung lập, chỉ sự khác lạ, chưa theo lối mòn hoặc chưa thực tế ngay).\"},{\"word\":\"先記下來\",\"pinyin\":\"xiān jì xiàlái\",\"meaning\":\"Ghi lại trước (cách nói khéo để gác lại vấn đề, hiện chưa có kế hoạch thực thi cụ thể).\"}],\"cultural_insight\":\"Văn hóa công sở Đài Loan rất coi trọng việc giữ thể diện và duy trì hòa khí (以和為貴). Cấp trên hiếm khi bác bỏ thẳng thừng hay chê bai ý kiến của cấp dưới. Do đó, các cụm từ ghi nhận chung chung như '記下來' (ghi lại) hay '研究看看' (nghiên cứu xem sao) thường là tín hiệu cho thấy vấn đề được ghi nhận vào danh sách chờ chứ chưa chắc đã được ưu tiên triển khai ngay.\",\"phrase_role\":\"quote\"}"
+      },
+      "uiState": {
+        "role": "quote",
+        "label": "Câu trích dẫn (Đối tác nói)",
+        "badgeStyleKey": "phraseBadgeQuote",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasThought": true,
+        "hasVariations": true,
+        "variationsCount": 1,
+        "hasVocab": true,
+        "vocabCount": 2,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  },
+  {
+    "testCase": {
+      "id": "NEW-2",
+      "name": "Sửa lỗi tự nhiên ngữ pháp (雖然他很忙，可是他還是有幫我了)",
+      "category": "Unseen - Grammar & Naturalness",
+      "prompt": "Câu này của tôi có tự nhiên không: \"雖然他很忙，可是他還是有幫我了。\" Hãy sửa lại cho chuẩn khẩu ngữ người Đài Loan.",
+      "expectedRole": "analysis",
+      "expectedBadge": "Câu đang phân tích",
+      "criteria": "Role analysis; chỉ ra câu hiểu được nhưng rườm rà (dư thừa cấu trúc 雖然...可是...還是 hoặc 有...了); đưa ra câu sửa tự nhiên 100% Phồn thể chuẩn Đài."
+    },
+    "flash": {
+      "latencyMs": 5118,
+      "tokens": {
+        "candidates": 254,
+        "thinking": 0
+      },
+      "reply": {
+        "content": "Câu gốc của bạn về mặt ngữ pháp là hoàn toàn đúng và người Đài Loan có thể hiểu được. Tuy nhiên, trong khẩu ngữ hàng ngày, người Đài Loan thường lược bỏ từ \"可是\" khi đã có \"雖然\", hoặc dùng cấu trúc tự nhiên hơn như thêm từ \"還是\" kết hợp với \"幫忙\". Để tự nhiên như người bản xứ, bạn có thể sửa lại thành \"雖然他很忙，但還是有幫我。\"",
+        "explanation": "Trong tiếng Trung khẩu ngữ, cấu trúc \"雖然...可是...\" thường được rút gọn thành \"雖然...但...\" hoặc chỉ dùng một trong hai từ nối. Bên cạnh đó, trợ từ \"了\" ở cuối câu có thể bỏ bớt khi nói về một hành động giúp đỡ chung chung để câu nói uyển chuyển hơn.",
+        "phrase_role": "analysis",
+        "pinyin": "Suīrán tā hěn máng, dàn háishì yǒu bāng wǒ.",
+        "tw": "雖然他很忙，可是他還是有幫我了。",
+        "vi": "Mặc dù anh ấy rất bận, nhưng anh ấy vẫn giúp tôi."
+      },
+      "uiState": {
+        "role": "analysis",
+        "label": "Câu đang phân tích",
+        "badgeStyleKey": "phraseBadgeAnalysis",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 7361,
+      "p2LatencyMs": 17494,
+      "totalLatencyMs": 24855,
+      "totalTokens": 880,
+      "draft": "Câu của bạn người Đài Loan hoàn toàn có thể hiểu được, nhưng chưa thật sự tự nhiên và hơi rườm rà trong khẩu ngữ do lạm dụng cấu trúc \"雖然...可是...\" và dư chữ \"了\" ở cuối. Cách nói tự nhiên và chuẩn khẩu ngữ của người Đài hơn là: 雖然他很忙，但還是幫了我。 (Suīrán tā hěn máng, dàn háishì bāng le wǒ: Mặc dù anh ấy rất bận, nhưng vẫn giúp tôi) hoặc 雖然他很忙，不過還是有幫我。 (Suīrán tā hěn máng, bùguò háishì yǒu bāng wǒ: Mặc dù anh ấy rất bận, nhưng vẫn có giúp tôi).",
+      "auditNotes": "Đã kiểm định bản nháp: Xác định đúng câu phân tích (role='analysis'), giữ nguyên câu gốc của người dùng, bổ sung các biến thể tự nhiên hơn (variations) và cấu trúc lại nội dung giải thích cho chuẩn Đài Loan.",
+      "reply": {
+        "content": "Câu của bạn người Đài Loan hoàn toàn có thể hiểu được, nhưng chưa thật sự tự nhiên và hơi rườm rà trong khẩu ngữ do lặp chủ ngữ ở vế sau, dùng '可是' hơi nặng nề và thừa chữ '了' ở cuối. Dưới đây là các cách diễn đạt tự nhiên hơn theo thói quen của người Đài:",
+        "tw": "雖然他很忙，可是他還是有幫我了。",
+        "pinyin": "Suīrán tā hěn máng, kěshì tā háishì yǒu bāng wǒ le.",
+        "vi": "Mặc dù anh ấy rất bận, nhưng anh ấy vẫn giúp tôi rồi.",
+        "explanation": "Câu gốc có thể hiểu được nhưng hơi rườm rà trong khẩu ngữ (lặp '他', dùng '可是...了' không gọn gàng).",
+        "phrase_role": "analysis",
+        "metadata": "{\"thought_summary\":\"Trong khẩu ngữ tiếng Trung Đài Loan, khi dùng cấu trúc '雖然...', vế sau thường lược bỏ chủ ngữ nếu trùng với vế trước (không lặp lại '他'), thay '可是' bằng '但' hoặc '不過', đồng thời tránh lạm dụng '了' ở cuối câu khi diễn tả hành động chung.\",\"variations\":[{\"tw\":\"雖然他很忙，但還是幫了我。\",\"pinyin\":\"Suīrán tā hěn máng, dàn háishì bāng le wǒ.\",\"vi\":\"Mặc dù anh ấy rất bận, nhưng vẫn giúp tôi.\",\"tag\":\"Tự nhiên, gọn gàng\"},{\"tw\":\"雖然他很忙，不過還是有幫我。\",\"pinyin\":\"Suīrán tā hěn máng, bùguò háishì yǒu bāng wǒ.\",\"vi\":\"Mặc dù anh ấy rất bận, nhưng vẫn có giúp tôi.\",\"tag\":\"Khẩu ngữ thân mật\"}],\"key_words\":[{\"word\":\"不過\",\"pinyin\":\"bùguò\",\"meaning\":\"nhưng mà, tuy nhiên (rất hay dùng trong khẩu ngữ Đài Loan thay cho 可是)\"},{\"word\":\"有幫\",\"pinyin\":\"yǒu bāng\",\"meaning\":\"có giúp (dùng để nhấn mạnh thực tế có hành động xảy ra)\"}],\"cultural_insight\":\"Người Đài Loan trong giao tiếp hàng ngày rất chuộng sự gọn gàng, súc tích. Các từ liên kết như 但 hoặc 不過 thường được ưa chuộng hơn 可是 trong văn nói nhanh, và việc lược bỏ các đại từ lặp lại giúp câu nói trôi chảy, tự nhiên hơn.\",\"phrase_role\":\"analysis\"}"
+      },
+      "uiState": {
+        "role": "analysis",
+        "label": "Câu đang phân tích",
+        "badgeStyleKey": "phraseBadgeAnalysis",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasThought": true,
+        "hasVariations": true,
+        "variationsCount": 2,
+        "hasVocab": true,
+        "vocabCount": 2,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  },
+  {
+    "testCase": {
+      "id": "NEW-3",
+      "name": "Yêu cầu đổi/hoàn tiền có ranh giới chặt chẽ (Đổi áo lỗi, từ chối voucher)",
+      "category": "Unseen - Complex Constraints",
+      "prompt": "Tôi mua một chiếc áo ở cửa hàng quần áo Đài Loan nhưng về nhà phát hiện bị rách chỉ ở nách áo. Hãy giúp tôi nói với nhân viên thu ngân để đổi áo mới hoặc hoàn lại tiền mặt, nhấn mạnh lịch sự nhưng dứt khoát không nhận phiếu giảm giá (折價券).",
+      "expectedRole": "recommended",
+      "expectedBadge": "Câu khuyên dùng (Chuẩn Đài)",
+      "criteria": "Role recommended; đúng vai khách hàng; lịch sự nhưng đáp ứng TRỌN VẸN cả 2 vế: (1) đổi áo mới hoặc hoàn tiền vì lỗi rách chỉ, (2) dứt khoát từ chối nhận phiếu giảm giá/voucher (折價券)."
+    },
+    "flash": {
+      "latencyMs": 9514,
+      "tokens": {
+        "candidates": 311,
+        "thinking": 0
+      },
+      "reply": {
+        "content": "Khi đến cửa hàng, bạn nên giữ thái độ bình tĩnh nhưng kiên quyết. Trình bày rõ lỗi sản phẩm và yêu cầu quyền lợi chính đáng của mình bằng một câu nói lịch sự nhưng rõ ràng quan điểm.",
+        "explanation": "Câu nói này dùng từ '換' (đổi) hoặc ',退' (trả lại) kèm theo cụm '現金' (tiền mặt) để khóa chặt hình thức hoàn tiền, đồng thời dùng 'i' không nhận phiếu giảm giá để nhân viên hiểu rõ lập trường của bạn.",
+        "phrase_role": "recommended",
+        "pinyin": "Nín hǎo, wǒ zuótiān mǎile zhè jiàn yīfú, fāxiàn wùxià yǒu pòsūn. Qǐngwèn kěyǐ bāng wǒ huàn yī jiàn xīn de, háishi tuì xiànjīn ne? Wǒ bù yào zhéjiàquàn.",
+        "tw": "您好，我昨天買了這件衣服，發現腋下有破損。請問可以幫我換一件新的，還是退現金呢？我不要折價券。",
+        "vi": "Xin chào, tôi mua chiếc áo này hôm qua và phát hiện nách áo bị rách. Xin hỏi có thể giúp tôi đổi chiếc mới hay hoàn tiền mặt vậy? Tôi không lấy phiếu giảm giá đâu ạ."
+      },
+      "uiState": {
+        "role": "recommended",
+        "label": "Câu mẫu chuẩn Đài",
+        "badgeStyleKey": "phraseBadgeRecommended",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 8065,
+      "p2LatencyMs": 10838,
+      "totalLatencyMs": 18903,
+      "totalTokens": 974,
+      "draft": "Chào bạn, khi đến cửa hàng để trao đổi, bạn có thể dùng câu nói lịch sự nhưng dứt khoát sau đây với nhân viên thu ngân: 不好意思，這件衣服我剛買回家就發現腋下有脫線。我想換一件新的或直接退現金，不需要折價券，謝謝。(Bù hǎoyīsi, zhè jiàn yīfú wǒ gāng mǎi huíjiā jiù fāxiàn yèxià yǒu tuōxiàn. Wǒ xiǎng huàn yī jiàn xīn de huò zhíjiē tuì xiànjīn, bù xūyào zhéjià quàn, xièxiè. - Xin lỗi, chiếc áo này tôi vừa mua về nhà thì phát hiện nách bị tuột chỉ. Tôi muốn đổi chiếc mới hoặc hoàn tiền mặt trực tiếp, không cần phiếu giảm giá đâu, cảm ơn bạn). Câu này vừa giữ thái độ lịch sự (不好意思) vừa thể hiện rõ yêu cầu không nhận phiếu giảm giá.",
+      "auditNotes": "Bản phác thảo đã chuẩn xác, sử dụng từ vựng Đài Loan tự nhiên (脫線, 退現金, 折價券), sắc thái vừa lịch sự vừa kiên quyết đúng yêu cầu. Giữ nguyên câu mẫu.",
+      "reply": {
+        "content": "Chào bạn, khi đến cửa hàng để đổi trả, bạn có thể dùng câu nói lịch sự nhưng dứt khoát sau đây với nhân viên thu ngân:",
+        "tw": "不好意思，這件衣服我剛買回家就發現腋下有脫線。我想換一件新的或直接退現金，不需要折價券，謝謝。",
+        "pinyin": "Bù hǎoyīsi, zhè jiàn yīfú wǒ gāng mǎi huíjiā jiù fāxiàn yèxià yǒu tuōxiàn. Wǒ xiǎng huàn yī jiàn xīn de huò zhíjiē tuì xiànjīn, bù xūyào zhéjià quàn, xièxiè.",
+        "vi": "Xin lỗi, chiếc áo này tôi vừa mua về nhà thì phát hiện nách bị tuột chỉ. Tôi muốn đổi chiếc mới hoặc hoàn tiền mặt trực tiếp, không cần phiếu giảm giá đâu, cảm ơn.",
+        "explanation": "Câu nói kết hợp giữa thái độ lịch sự (不好意思) và yêu cầu rõ ràng, dứt khoát về quyền lợi đổi hàng/hoàn tiền mà không nhận phiếu giảm giá.",
+        "phrase_role": "recommended",
+        "metadata": "{\"thought_summary\":\"Khi đi đổi trả hàng lỗi tại Đài Loan, việc mở đầu bằng '不好意思' giúp giữ thái độ lịch sự nhưng việc nêu rõ '退現金' và '不需要折價券' giúp bạn thể hiện rõ lập trường kiên quyết, bảo vệ quyền lợi người tiêu dùng.\",\"variations\":[{\"tw\":\"如果不能退現金，可以請店長來幫我處理嗎？\",\"pinyin\":\"Rúguǒ bùnéng tuì xiànjīn, kěyǐ qǐng diànzhǎng lái bāng wǒ chǔlǐ ma?\",\"vi\":\"Nếu không thể hoàn tiền mặt, có thể nhờ cửa hàng trưởng ra giải quyết giúp tôi được không?\",\"tag\":\"Trường hợp nhân viên từ chối\"}],\"key_words\":[{\"word\":\"脫線\",\"pinyin\":\"tuōxiàn\",\"meaning\":\"tuột chỉ, sút chỉ (lỗi quần áo)\"},{\"word\":\"退現金\",\"pinyin\":\"tuì xiànjīn\",\"meaning\":\"hoàn tiền mặt\"},{\"word\":\"折價券\",\"pinyin\":\"zhéjià quàn\",\"meaning\":\"phiếu giảm giá, voucher\"}],\"cultural_insight\":\"Theo Luật Bảo vệ Người tiêu dùng tại Đài Loan, hàng hóa có lỗi từ nhà sản xuất trong thời gian ngắn sau khi mua thường được quyền yêu cầu đổi trả. Cửa hàng đôi khi sẽ cố gắng thuyết phục khách nhận phiếu giảm giá để giữ chân khách, nhưng bạn hoàn toàn có quyền từ chối và yêu cầu hoàn tiền mặt nếu hàng lỗi.\",\"phrase_role\":\"recommended\"}"
+      },
+      "uiState": {
+        "role": "recommended",
+        "label": "Câu khuyên dùng (Chuẩn Đài)",
+        "badgeStyleKey": "phraseBadgeRecommended",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasThought": true,
+        "hasVariations": true,
+        "variationsCount": 1,
+        "hasVocab": true,
+        "vocabCount": 3,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  },
+  {
+    "testCase": {
+      "id": "NEW-4",
+      "name": "So sánh thuật ngữ mới Đài Loan vs Đại Lục (Sạc dự phòng & Xe công nghệ)",
+      "category": "Unseen - Terminology Contrast",
+      "prompt": "Ở Đài Loan người ta gọi \"sạc dự phòng\" và \"xe công nghệ\" là gì? Có khác gì so với từ bên Trung Quốc đại lục không?",
+      "expectedRole": "vocab",
+      "expectedBadge": "Từ vựng chuẩn Đài",
+      "criteria": "Nêu chính xác từ Đài Loan: 行動電源 (vs Đại Lục 充電寶) và 多元計程車/計程車 (vs 大陸 網約車/滴滴); thái độ khách quan; không chê bai phương ngữ."
+    },
+    "flash": {
+      "latencyMs": 5496,
+      "tokens": {
+        "candidates": 184,
+        "thinking": 0
+      },
+      "reply": {
+        "content": "Ở Đài Loan, 'sạc dự phòng' gọi là 行動電源, còn 'xe công nghệ' gọi là 网約車 hoặc thường dùng tên các hãng như Uber. So với Đại lục, bên Đại lục thường gọi 'sạc dự phòng' là 充电宝 và 'xe công nghệ' là 网约车.",
+        "explanation": "Từ vựng công nghệ ở Đài Loan thường mang tính trang trọng và thuần Việt hơn (ví dụ 行動電源 - nguồn điện di động), trong khi Đại lục dùng từ mang tính hình tượng hoặc rút gọn hơn (充电宝 - bảo bối sạc điện).",
+        "phrase_role": "vocab",
+        "pinyin": "xíngdòng diànyuán",
+        "tw": "行動電源",
+        "vi": "sạc dự phòng"
+      },
+      "uiState": {
+        "role": "vocab",
+        "label": "Từ vựng chuẩn Đài",
+        "badgeStyleKey": "phraseBadgeVocab",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 5440,
+      "p2LatencyMs": 8310,
+      "totalLatencyMs": 13750,
+      "totalTokens": 790,
+      "draft": "Ở Đài Loan, \"sạc dự phòng\" được gọi là 行動電源 (xíngdòng diànyuán), khác với từ 充电宝 (chōngdiànbǎo) ở Trung Quốc đại lục. Còn \"xe công nghệ\", người Đài Loan thường gọi dịch vụ gọi xe qua ứng dụng là 叫車服務 hoặc cụ thể cho loại xe taxi công nghệ là 多元化計程車 (duōyuánhuà jìchéngchē), trong khi Đại lục dùng từ 网约车 (wǎngyuēchē).",
+      "auditNotes": "Phát hiện bản nháp để sót chữ Giản thể (充电宝, 网约车), đã chuyển đổi hoàn toàn sang Phồn thể chuẩn Đài Loan (充電寶, 網約車). Do câu hỏi mang tính so sánh từ vựng tổng quát không có câu trích dẫn cụ thể, đã áp dụng định dạng ẩn primary_phrase và đưa các từ vựng cốt lõi vào key_words.",
+      "reply": {
+        "content": "Ở Đài Loan, \"sạc dự phòng\" được gọi là 行動電源 (xíngdòng diànyuán), trong khi Trung Quốc đại lục dùng từ 充電寶 (chōngdiànbǎo). Đối với \"xe công nghệ\" (dịch vụ gọi xe qua ứng dụng như Uber, Line Taxi), người Đài Loan thường gọi chung là 叫車服務 (jiàochē fúwù) hoặc chỉ rõ loại hình taxi công nghệ/đa dạng hóa là 多元化計程車 (duōyuánhuà jìchéngchē), còn Đại lục gọi là 網約車 (wǎngyuēchē).",
+        "tw": "",
+        "pinyin": "",
+        "vi": "",
+        "explanation": "",
+        "phrase_role": "vocab",
+        "metadata": "{\"thought_summary\":\"Tổng hợp và phân biệt rõ sự khác nhau về từ vựng công nghệ giữa Đài Loan và Trung Quốc đại lục cho các khái niệm 'sạc dự phòng' và 'xe công nghệ', giúp người học dùng đúng từ khi giao tiếp tại Đài Loan.\",\"variations\":[],\"key_words\":[{\"word\":\"行動電源\",\"pinyin\":\"xíngdòng diànyuán\",\"meaning\":\"Sạc dự phòng (phổ biến tại Đài Loan)\"},{\"word\":\"充電寶\",\"pinyin\":\"chōngdiànbǎo\",\"meaning\":\"Sạc dự phòng (phổ biến tại Trung Quốc đại lục)\"},{\"word\":\"多元化計程車\",\"pinyin\":\"duōyuánhuà jìchéngchē\",\"meaning\":\"Xe công nghệ / Taxi đa dạng hóa (Đài Loan)\"},{\"word\":\"網約車\",\"pinyin\":\"wǎngyuēchē\",\"meaning\":\"Xe công nghệ / Xe đặt qua mạng (Đại lục)\"}],\"cultural_insight\":\"Sự khác biệt về từ vựng công nghệ giữa Đài Loan và Đại lục phản ánh thói quen ngôn ngữ riêng biệt. Đài Loan thường dùng các thuật ngữ mang tính mô tả trực quan và hành chính hơn (như 行動電源 - nguồn điện di động, 多元化計程車 - xe taxi đa dạng hóa), trong khi Đại lục hay dùng các từ ghép ngắn gọn mang tính định danh nhanh (như 充電寶, 網約車).\",\"phrase_role\":\"vocab\"}"
+      },
+      "uiState": {
+        "role": "vocab",
+        "label": "Từ vựng chuẩn Đài",
+        "badgeStyleKey": "phraseBadgeVocab",
+        "hasTw": false,
+        "showExplanationBox": false,
+        "hasThought": true,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": true,
+        "vocabCount": 4,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  },
+  {
+    "testCase": {
+      "id": "NEW-5",
+      "name": "Hỏi văn hóa tiền mừng cưới (Zero Bloat - Không sinh thẻ câu nói vô ích)",
+      "category": "Unseen - Culture Zero Bloat",
+      "prompt": "Ở Đài Loan khi đi ăn cưới thì tiền mừng (紅包) có những quy tắc và số tiền như thế nào? Có những kiêng kỵ gì về số tiền không?",
+      "expectedRole": "vocab",
+      "expectedBadge": "Ẩn Thẻ (Zero UI)",
+      "criteria": "Zero Bloat: Trả lời toàn diện trong content (tiền chẵn, tránh số 4, mức tiền theo địa điểm nhà hàng/khách sạn); KHÔNG tự chế ra thẻ câu khẩu ngữ vô nghĩa (tw=\"\", pinyin=\"\", vi=\"\", variations=[], key_words=[]); thẻ chính được ẩn hoàn toàn trên UI."
+    },
+    "flash": {
+      "latencyMs": 1944,
+      "tokens": {
+        "candidates": 263,
+        "thinking": 0
+      },
+      "reply": {
+        "content": "Ở Đài Loan, tiền mừng cưới (紅包 - hóngbāo) có các quy tắc quan trọng sau: Thứ nhất, số tiền mừng phải là số chẵn (như 2, 6, 8) và tuyệt đối tránh số 4 vì phát âm giống chữ 'tử' (chết). Các con số phổ biến thường bắt đầu từ 1.200, 1.600, 2.000, 2.600, 3.600, 6.000 Đài tệ tùy thuộc vào mức độ thân thiết với cô dâu chú rể và địa điểm tổ chức đám cưới (như nhà hàng bình dân hay khách sạn 5 sao). Thứ hai, tiền mừng nên để trong bao lì xì đỏ mới, không dùng bao lì xì cũ hoặc nhàu nát. Thứ ba, nguyên tắc bất di bất dịch là 'có qua có lại', số tiền mừng khi nhận thiệp từ người khác sau này không được ít hơn số tiền họ từng mừng mình.",
+        "explanation": "",
+        "phrase_role": "",
+        "pinyin": "",
+        "tw": "",
+        "vi": ""
+      },
+      "uiState": {
+        "role": "vocab",
+        "label": "Từ vựng chuẩn Đài",
+        "badgeStyleKey": "phraseBadgeVocab",
+        "hasTw": false,
+        "showExplanationBox": false,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 5748,
+      "p2LatencyMs": 8354,
+      "totalLatencyMs": 14102,
+      "totalTokens": 1200,
+      "draft": "Ở Đài Loan, tiền mừng cưới (紅包 - hóngbāo) phụ thuộc vào mức độ thân thiết và địa điểm tổ chức. 1. Mức tiền phổ biến (tính theo Đài tệ - NTD): Nhà hàng thông thường: Đồng nghiệp, bạn bè xã giao từ 1.200 - 1.600 NTD; bạn thân từ 2.000 - 2.600 NTD. Khách sạn sang trọng (5 sao): Đồng nghiệp, bạn bè từ 2.000 - 2.600 NTD trở lên; bạn thân, người thân từ 3.600 - 6.000 NTD hoặc hơn. 2. Kiêng kỵ về con số: Luôn dùng số chẵn (2, 6, 8), tuyệt đối tránh số lẻ (vì mang ý nghĩa chia rẽ). Đặc biệt tránh số 4 vì phát âm giống chữ tử (chết). 3. Trường hợp không đi dự: Nếu nhận thiệp nhưng không thể đến, vẫn nên gửi phong bì (gọi là 禮到) với số tiền từ 1.200 - 2.000 NTD tùy mức độ thân thiết, hoặc mừng lại đúng bằng số tiền họ từng mừng mình trong đám cưới của mình trước đó.",
+      "auditNotes": "Đã kiểm định bản phác thảo. Đây là câu hỏi văn hóa/phong tục thuần túy không có câu nói cụ thể, nên đã chuẩn hóa primary_phrase thành rỗng theo quy tắc zero bloat. Nội dung về mức tiền mừng (NTD), số chẵn/kiêng số 4 và tiền mừng khi vắng mặt (禮到) hoàn toàn chính xác theo phong tục Đài Loan.",
+      "reply": {
+        "content": "Tại Đài Loan, việc đi tiền mừng cưới (紅包) phụ thuộc lớn vào mức độ thân thiết với cô dâu chú rể và địa điểm tổ chức tiệc cưới:\\n\\n1. Mức tiền phổ biến (tính theo Đài tệ - NTD):\\n- Nhà hàng tiệc cưới thông thường:\\n  + Đồng nghiệp, bạn bè xã giao: 1.200 - 1.600 NTD.\\n  + Bạn thân: 2.000 - 2.600 NTD.\\n- Khách sạn sang trọng (5 sao):\\n  + Đồng nghiệp, bạn bè xã giao: 2.000 - 2.600 NTD trở lên.\\n  + Bạn thân, người thân trong gia đình: 3.600 - 6.000 NTD hoặc hơn.\\n\\n2. Các quy tắc và kiêng kỵ về con số:\\n- Luôn dùng số chẵn (đặc biệt ưu chuộng các số mang ý nghĩa tốt lành như 2, 6, 8, ví dụ: 2.000, 2.200, 2.600, 3.600, 6.000).\\n- Tuyệt đối TRÁNH các số lẻ (vì mang ý nghĩa chia rẽ) và đặc biệt tránh số 4 vì phát âm giống chữ 'tử' (chết).\\n\\n3. Trường hợp không thể dự tiệc (禮到 - lǐdào):\\n- Nếu nhận được thiệp mời nhưng không thể đến tham dự, bạn vẫn nên gửi phong bì mừng cưới để thể hiện thành ý. Mức tiền thường từ 1.200 - 2.000 NTD tùy mức độ thân thiết, hoặc mừng lại đúng bằng số tiền mà người đó từng mừng trong đám cưới của bạn trước đây.",
+        "tw": "",
+        "pinyin": "",
+        "vi": "",
+        "explanation": "",
+        "phrase_role": "vocab",
+        "metadata": "{\"thought_summary\":\"Văn hóa mừng cưới (包紅包) tại Đài Loan rất coi trọng tính cát tường và sự cân đối. Người Việt Nam khi tham gia đám cưới ở Đài Loan cần lưu ý mức tiền tùy thuộc vào địa điểm (nhà hàng tiệc cưới hay khách sạn 5 sao), luôn đi số chẵn (tránh số 4), và có thể gửi tiền mừng (禮到) nếu không thể trực tiếp tham dự.\",\"variations\":[],\"key_words\":[{\"word\":\"紅包\",\"pinyin\":\"hóngbāo\",\"meaning\":\"bao lì xì, phong bì tiền mừng\"},{\"word\":\"禮到\",\"pinyin\":\"lǐdào\",\"meaning\":\"lễ đến (gửi tiền mừng khi không đến dự tiệc)\"},{\"word\":\"禮金簿\",\"pinyin\":\"lǐjīnbù\",\"meaning\":\"sổ ghi tiền mừng cưới\"}],\"cultural_insight\":\"Người Đài Loan rất chú trọng đến 'có qua có lại' (禮尚往來 - lǐshàng wǎnglái) trong việc mừng cưới. Thường khi nhận được tiền mừng bao nhiêu trong đám cưới của mình, bạn nên ghi chép lại cẩn thận (trong sổ ghi tiền mừng gọi là 禮金簿) để sau này khi đối phương cưới, mình sẽ mừng lại khoản tiền tương đương hoặc cao hơn một chút.\",\"phrase_role\":\"vocab\"}"
+      },
+      "uiState": {
+        "role": "vocab",
+        "label": "Từ vựng chuẩn Đài",
+        "badgeStyleKey": "phraseBadgeVocab",
+        "hasTw": false,
+        "showExplanationBox": false,
+        "hasThought": true,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": true,
+        "vocabCount": 3,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  }
+]

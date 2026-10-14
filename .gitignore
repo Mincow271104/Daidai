@@ -46,3 +46,4 @@ server/cloudflared.exe
 __pycache__/
 server/__pycache__/
 *.log
+dist_test/

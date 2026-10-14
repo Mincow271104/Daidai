@@ -1,0 +1,701 @@
+[
+  {
+    "tcId": "TC6",
+    "name": "Sắc thái từ 隨便",
+    "prompt": "Trong tiếng Hoa Đài Loan, 「隨便」 có phải lúc nào cũng mang nghĩa tích cực là ‘tùy ý’ không? Hãy phân tích hai tình huống: bạn bè hỏi muốn ăn gì và đồng nghiệp hỏi ý kiến về một quyết định quan trọng. Giải thích sắc thái, tránh kết luận tuyệt đối và không cần tạo quá nhiều câu mẫu.",
+    "criteria": "Phân biệt 'sao cũng được' vs thiếu quan tâm / bất lịch sự tùy ngữ cảnh; không kết luận luôn tiêu cực; không tạo nhiều thẻ phụ.",
+    "flash": {
+      "latencyMs": 1220,
+      "tokens": {
+        "candidates": 136,
+        "thinking": 0
+      },
+      "output": {
+        "content": "Từ 「隨便」 không phải lúc nào cũng mang nghĩa tích cực là 'tùy ý'. Khi bạn bè hỏi ăn gì mà nói '隨便', thường là sự linh hoạt, thoải mái chiều theo ý nhóm. Ngược lại, nếu đồng nghiệp hỏi ý kiến về quyết định quan trọng mà đáp '隨便', sắc thái có thể là thiếu quan tâm, phó mặc hoặc miễn cưỡng. Do đó, cần xét vào bối cảnh cụ thể để hiểu đúng ý đối phương.",
+        "tw": "",
+        "pinyin": "",
+        "vi": "",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": false,
+        "hasTw": false,
+        "badgeLabel": "",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": []
+    },
+    "reasoning": {
+      "p1LatencyMs": 2950,
+      "p2LatencyMs": 5392,
+      "totalLatencyMs": 8342,
+      "p1Tokens": {
+        "candidates": 150,
+        "thinking": 0
+      },
+      "p2Tokens": {
+        "candidates": 385,
+        "thinking": 0
+      },
+      "totalTokens": 535,
+      "p1Draft": "Trong tiếng Hoa Đài Loan, 「隨便」 không phải lúc nào cũng mang nghĩa tích cực là 'tùy ý'. Khi bạn bè hỏi ăn gì, từ này thường mang sắc thái thoải mái, chiều theo ý đối phương hoặc thực sự không câu nệ, không mang ý nghĩa tiêu cực. Tuy nhiên, khi được hỏi ý kiến về một quyết định quan trọng trong công việc, việc dùng 「隨便」 có thể bị hiểu là sự thiếu quan tâm, thái độ qua loa hoặc đùn đẩy trách nhiệm. Do đó, sắc thái của từ này phụ thuộc rất lớn vào ngữ cảnh giao tiếp và thái độ thực tế, không nên áp đặt một kết luận tuyệt đối cho mọi tình huống.",
+      "auditNotes": "Đã kiểm tra từ 隨便, đảm bảo phân tích đúng hai ngữ cảnh theo yêu cầu, tránh kết luận tuyệt đối, giữ chữ Phồn thể chuẩn xác và loại bỏ các trường thừa (variations, key_words, cultural_insight) theo quy tắc zero bloat.",
+      "thoughtSummary": "Từ 隨便 trong tiếng Hoa có tính linh hoạt cao về sắc thái. Người học cần phân biệt rõ giữa ngữ cảnh xã giao thân mật (thoải mái, chiều ý bạn bè) và ngữ cảnh công việc trang trọng (dễ bị hiểu lầm là thiếu hợp tác hoặc vô trách nhiệm).",
+      "output": {
+        "content": "Trong tiếng Hoa Đài Loan, 「隨便」 không phải lúc nào cũng mang nghĩa tích cực là 'tùy ý'. Khi bạn bè hỏi bạn muốn ăn gì, việc dùng 「隨便」 thường mang sắc thái thoải mái, thể hiện sự linh hoạt, chiều theo ý đối phương hoặc sự dễ dãi, không câu nệ trong quan hệ thân thiết. Tuy nhiên, khi đối mặt với các câu hỏi hoặc quyết định quan trọng trong công việc, câu trả lời 「隨便」 rất dễ bị hiểu lầm là thái độ qua loa, thiếu quan tâm, thiếu trách nhiệm hoặc đùn đẩy quyền quyết định cho người khác. Do đó, sắc thái của từ này phụ thuộc hoàn toàn vào ngữ cảnh và mức độ trang trọng của tình huống.",
+        "tw": "隨便",
+        "pinyin": "suíbiàn",
+        "vi": "tùy ý, tùy thích / qua loa, thiếu quan tâm",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": true,
+        "hasTw": true,
+        "badgeLabel": "Từ vựng chuẩn Đài",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": []
+    }
+  },
+  {
+    "tcId": "TC7",
+    "name": "Kiểm tra ngữ pháp",
+    "prompt": "Câu 「我昨天有去過那間店了」 có tự nhiên trong tiếng Hoa Đài Loan không? Hãy giải thích vai trò của 「有」、「過」 và 「了」, phân biệt câu sai ngữ pháp với câu hơi dư hoặc ít tự nhiên. Đề xuất cách nói tự nhiên hơn mà không khẳng định quá mức.",
+    "criteria": "Phân tích vai trò 有, 過, 了; không kết luận câu sai hoàn toàn; đề xuất câu tự nhiên hơn (我昨天去過那間店/我昨天有去那間店).",
+    "flash": {
+      "latencyMs": 1803,
+      "tokens": {
+        "candidates": 273,
+        "thinking": 0
+      },
+      "output": {
+        "content": "Câu này về mặt ngữ pháp không sai, nhưng trong văn nói hàng ngày của người Đài Loan hơi dư thừa và ít tự nhiên do lặp lại dấu hiệu quá khứ. Cụ thể, 「有」 dùng để nhấn mạnh hành động đã xảy ra, 「過」 chỉ trải nghiệm trong quá khứ, còn 「了」 nhấn mạnh trạng thái hoàn thành. Khi kết hợp cả ba trong cùng một câu, câu nói trở nên cồng kềnh. Cách nói tự nhiên hơn là bỏ 「了」 để chỉ dùng 「有...過」 hoặc chỉ dùng 「了」. Dưới đây là câu gợi ý tự nhiên hơn.",
+        "tw": "我昨天去過那間店",
+        "pinyin": "wǒ zuótiān qù guò nà jiān diàn",
+        "vi": "Hôm qua tôi đã đến cửa hàng đó rồi.",
+        "explanation": "Trong cấu trúc này, \"有\" bổ trợ cho hành động đã thực hiện, \"過\" nhấn mạnh yếu tố từng trải nghiệm, còn \"了\" biểu thị sự hoàn thành. Việc dùng đồng thời cả ba thành tố khiến câu văn nặng nề, không thuận miệng trong giao tiếp tự nhiên.",
+        "phrase_role": "analysis"
+      },
+      "scores": {
+        "languageAccuracy": 1.5,
+        "taiwanNaturalness": 1.5,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 9
+      },
+      "defects": [
+        "Đề xuất cách nói 'bỏ 了 chỉ dùng 有...過' chấp nhận được nhưng vẫn còn hơi gượng trong khẩu ngữ Đài Loan khi đi cùng mốc thời gian 昨天."
+      ],
+      "realUiResult": {
+        "role": "analysis",
+        "label": "Câu đang phân tích",
+        "badgeStyleKey": "phraseBadgeAnalysis",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 4372,
+      "p2LatencyMs": 8286,
+      "totalLatencyMs": 12658,
+      "p1Tokens": {
+        "candidates": 262,
+        "thinking": 0
+      },
+      "p2Tokens": {
+        "candidates": 572,
+        "thinking": 0
+      },
+      "totalTokens": 793,
+      "p1Draft": "Câu 「我昨天有去過那間店了」 nghe không tự nhiên trong tiếng Hoa Đài Loan. Đây không phải là câu sai ngữ pháp nghiêm trọng, mà là câu bị dư thừa và lộn xộn về mặt biểu thị thời gian và thể. Phân tích các thành phần: 「昨天」 xác định thời gian cụ thể trong quá khứ; 「有」 dùng để nhấn mạnh; 「過」 chỉ trải nghiệm (thường không đi kèm với mốc thời gian cụ thể như 「昨天」); và 「了」 chỉ sự hoàn thành. Việc nhồi nhét cả 「有」、「過」 và 「了」 vào cùng một câu có mốc thời gian cụ thể như 「昨天」 khiến câu trở nên rườm rà và không thuận miệng. Cách nói tự nhiên hơn tùy thuộc vào ý định của bạn: Nếu muốn nói đã đến đó vào hôm qua, hãy dùng 「我昨天去了那間店」 hoặc 「我昨天去那間店了」. Nếu muốn nhấn mạnh trải nghiệm từng ghé qua, hãy dùng 「我有去過那間店」 hoặc 「我去過那間店」.",
+      "auditNotes": "Kiểm tra toàn bộ nội dung, đảm bảo 100% chữ Phồn thể, gán role 'analysis' cho câu phân tích, thiết lập variations, key_words, cultural_insight rỗng theo quy tắc zero bloat.",
+      "thoughtSummary": "Giải thích cấu trúc ngữ pháp khi kết hợp 昨天, 有, 過, 了, giúp người học nhận biết lỗi diễn đạt rườm rà (thừa từ) thay vì lỗi cấu trúc nghiêm trọng, đồng thời cung cấp các phương án thay thế tự nhiên hơn trong tiếng Hoa Đài Loan.",
+      "output": {
+        "content": "Câu 「我昨天有去過那間店了」 không hẳn sai ngữ pháp nặng nề, nhưng bị đánh giá là không tự nhiên và rườm rà trong tiếng Hoa Đài Loan do chồng chéo quá nhiều thành phần chỉ thời gian và thể (aspect). Cụ thể các thành phần:\n1. 「昨天」 xác định mốc thời gian cụ thể trong quá khứ.\n2. 「有」 dùng để nhấn mạnh khẳng định.\n3. 「過」 chỉ trải nghiệm (từng làm gì), thường ít khi đi kèm với mốc thời gian cụ thể như 「昨天」.\n4. 「了」 chỉ sự hoàn thành hoặc thay đổi trạng thái.\nViệc nhồi nhét cả 「有」、「過」 và 「了」 vào câu có 「昨天」 khiến câu bị rối và mất tự nhiên. Đây là vấn đề về sự dư thừa và thiếu tự nhiên về mặt dụng học (pragmatic redundancy) chứ không phải câu sai cấu trúc nghiêm trọng khiến người nghe không hiểu.\nTùy vào ý định thực tế, bạn có thể nói tự nhiên hơn:\n- Nếu muốn nhấn mạnh việc đi vào hôm qua: 「我昨天去了那間店」.\n- Nếu muốn nhấn mạnh trải nghiệm từng ghé qua: 「我有去過那間店」.",
+        "tw": "我昨天有去過那間店了",
+        "pinyin": "wǒ zuótiān yǒu qù guò nà jiān diàn le",
+        "vi": "Tôi hôm qua đã từng đi qua cửa hàng đó rồi.",
+        "explanation": "Câu phân tích chứa sự kết hợp dư thừa giữa mốc thời gian cụ thể (昨天), trợ từ nhấn mạnh (有), từ chỉ trải nghiệm (過) và trợ từ ngữ khí (了).",
+        "phrase_role": "analysis",
+        "metadata": "{\"thought_summary\":\"Phân tích nguyên nhân câu 「我昨天有去過那間店了」 không tự nhiên do chồng chéo mốc thời gian (昨天) với trải nghiệm (過) và nhấn mạnh (有, 了), đồng thời đưa ra các cách diễn đạt chuẩn xác.\",\"variations\":[],\"key_words\":[],\"cultural_insight\":\"\",\"phrase_role\":\"analysis\"}"
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": [],
+      "realUiResult": {
+        "role": "analysis",
+        "label": "Câu đang phân tích",
+        "badgeStyleKey": "phraseBadgeAnalysis",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasThought": true,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      }
+    }
+  },
+  {
+    "tcId": "TC8",
+    "name": "Tình huống nhà hàng",
+    "prompt": "Tôi đang đợi món ăn tại một nhà hàng ở Đài Loan. Ứng dụng báo 20 phút nhưng tôi đã đợi 45 phút. Hãy tạo một câu tiếng Hoa Phồn thể để hỏi nhân viên món ăn còn bao lâu, lịch sự nhưng tự nhiên. Chỉ cần một câu chính, pinyin và bản dịch tiếng Việt.",
+    "criteria": "Hỏi thời gian chờ lịch sự, chuẩn Đài Loan; pinyin khớp; không sinh thêm biến thể, từ vựng, văn hóa ngoài yêu cầu.",
+    "flash": {
+      "latencyMs": 1225,
+      "tokens": {
+        "candidates": 71,
+        "thinking": 0
+      },
+      "output": {
+        "content": "Bạn có thể hỏi nhân viên câu này một cách lịch sự khi món ăn ra chậm.",
+        "tw": "不好意思，請問我們的餐點還要等多久？",
+        "pinyin": "",
+        "vi": "Xin lỗi, cho hỏi món ăn của chúng tôi còn phải đợi bao lâu nữa ạ？",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": false,
+        "hasTw": true,
+        "badgeLabel": "Câu mẫu chuẩn Đài",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 1,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 1.5,
+        "total": 8.5
+      },
+      "defects": [
+        "Flash bỏ quên trường pinyin (pinyin trả về rỗng dù prompt yêu cầu rõ ràng)."
+      ]
+    },
+    "reasoning": {
+      "p1LatencyMs": 866,
+      "p2LatencyMs": 6519,
+      "totalLatencyMs": 7385,
+      "p1Tokens": {
+        "candidates": 79,
+        "thinking": 0
+      },
+      "p2Tokens": {
+        "candidates": 277,
+        "thinking": 0
+      },
+      "totalTokens": 356,
+      "p1Draft": "不好意思，請問一下剛剛點的餐點還要多久呢？\nBù hǎoyìsi, qǐwèn yīxià gānggāng diǎn de cāndiǎn hái yào duōjiǔ ne?\nXin lỗi, cho tôi hỏi món ăn vừa gọi thì còn bao lâu nữa ạ?",
+      "auditNotes": "Đã kiểm tra bản nháp. Chữ Phồn thể hoàn toàn chính xác. Văn phong lịch sự, phù hợp bối cảnh nhà hàng Đài Loan. Các trường không cần thiết được để trống theo quy tắc tối giản.",
+      "thoughtSummary": "Sử dụng câu hỏi lịch sự với cụm mở đầu '不好意思，請問一下' giúp việc giục món trở nên khéo léo, tránh gây khó chịu cho nhân viên phục vụ.",
+      "output": {
+        "content": "Trong trường hợp bạn đã đợi quá lâu so với thời gian dự kiến (ví dụ 45 phút thay vì 20 phút), bạn có thể dùng câu sau để hỏi nhân viên một cách lịch sự và tự nhiên tại Đài Loan: 「不好意思，請問一下剛剛點的餐點還要多久呢？」.",
+        "tw": "不好意思，請問一下剛剛點的餐點還要多久呢？",
+        "pinyin": "Bù hǎoyìsi, qǐwèn yīxià gānggāng diǎn de cāndiǎn hái yào duōjiǔ ne?",
+        "vi": "Xin lỗi, cho tôi hỏi món ăn vừa gọi thì còn bao lâu nữa ạ?",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": true,
+        "hasTw": true,
+        "badgeLabel": "Câu khuyên dùng (Chuẩn Đài)",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": []
+    }
+  },
+  {
+    "tcId": "TC9",
+    "name": "Từ vựng địa phương 統編",
+    "prompt": "Tôi mua hàng tại một cửa hàng ở Đài Loan và muốn lấy hóa đơn có mã số thuế công ty. Người bản địa thường nói thế nào cho tự nhiên? Hãy đưa ra cách nói phù hợp, pinyin, bản dịch và giải thích ngắn gọn 「統編」 là gì. Đừng nhầm nó với việc chỉ xin hóa đơn thông thường.",
+    "criteria": "Hiểu đúng 統編 (mã số thuế doanh nghiệp trên phát phiếu); đề xuất câu chuẩn (打統編); giải thích chính xác không bịa luật thuế.",
+    "flash": {
+      "latencyMs": 1500,
+      "tokens": {
+        "candidates": 202,
+        "thinking": 0
+      },
+      "output": {
+        "content": "Để yêu cầu xuất hóa đơn có mã số thuế công ty tại Đài Loan, bạn cần dùng cụm từ 「統編」 (mã số định danh doanh nghiệp gồm 8 chữ số). 「統編」 không phải là tờ hóa đơn, mà là mã số thuế được in lên hóa đơn 「統一發票」 để công ty khấu trừ chi phí.",
+        "tw": "請幫我打統編，統編是...",
+        "pinyin": "qǐng bāng wǒ dǎ tǒngbiān, tǒngbiān shì...",
+        "vi": "Làm ơn nhập mã số thuế công ty giúp tôi, mã số thuế là...",
+        "explanation": "Khi thanh toán, bạn nói 「請幫我打統編，統編是...」 để nhân viên thu ngân nhập mã số thuế vào máy xuất hóa đơn.",
+        "phrase_role": "recommended"
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": [],
+      "realUiResult": {
+        "role": "recommended",
+        "label": "Câu mẫu chuẩn Đài",
+        "badgeStyleKey": "phraseBadgeRecommended",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 1296,
+      "p2LatencyMs": 9380,
+      "totalLatencyMs": 10676,
+      "p1Tokens": {
+        "candidates": 211,
+        "thinking": 0
+      },
+      "p2Tokens": {
+        "candidates": 464,
+        "thinking": 0
+      },
+      "totalTokens": 954,
+      "p1Draft": "Khi mua hàng tại Đài Loan và muốn xuất mã số thuế công ty lên hóa đơn, người bản địa thường nói: 「請幫我打統編，統編是 [8 chữ số]」 (Qǐng bāng wǒ dǎ tǒng biān, tǒng biān shì...) hoặc đơn giản là 「我要打統編」 (Wǒ yào dǎ tǒng biān). Thu ngân cũng có thể hỏi bạn: 「請問需要統編嗎？」 (Qǐngwèn xūyào tǒng biān ma?). Giải thích ngắn gọn: 「統編」 (Mã số thống nhất / 統一編號) là mã số định danh doanh nghiệp gồm 8 chữ số tại Đài Loan, KHÔNG PHẢI là bản thân tờ hóa đơn. Hóa đơn điện tử/giấy là 「統一發票」, và việc yêu cầu \"打統編\" nghĩa là yêu cầu thu ngân in mã số thuế của công ty lên tờ hóa đơn đó.",
+      "auditNotes": "Đã kiểm tra tính chính xác của thuật ngữ '統編' (mã số doanh nghiệp 8 chữ số) và phân biệt với '統一發票' (hóa đơn). Đã đảm bảo 100% chữ Phồn thể chuẩn Đài Loan, gán role='recommended' cho câu mẫu, thêm key_words và cultural_insight hữu ích cho người học.",
+      "thoughtSummary": "Hướng dẫn cách yêu cầu hóa đơn công ty (統編) tại Đài Loan một cách tự nhiên, kèm theo cách phản hồi câu hỏi của nhân viên thu ngân và phân biệt với hóa đơn cá nhân thông thường.",
+      "output": {
+        "content": "Khi mua hàng tại Đài Loan và muốn xuất mã số thuế công ty lên hóa đơn để khấu trừ chi phí, người bản địa thường nói: 「請幫我打統編，統編是 [8 chữ số]」 hoặc nói gọn là 「我要打統編」. Khi thanh toán, thu ngân cũng thường chủ động hỏi: 「請問需要統編嗎？」. Lưu ý quan trọng: 「統編」 là viết tắt của 「統一編號」 (mã số định danh doanh nghiệp gồm 8 chữ số), hoàn toàn KHÔNG PHẢI là tờ hóa đơn. Hóa đơn tại Đài Loan được gọi là 「統一發票」. Cụm từ 「打統編」 có nghĩa là yêu cầu thu ngân nhập mã số thuế của công ty vào hệ thống để in lên tờ hóa đơn đó.",
+        "tw": "請幫我打統編，統編是......",
+        "pinyin": "Qǐng bāng wǒ dǎ tǒng biān, tǒng biān shì......",
+        "vi": "Xin hãy giúp tôi nhập mã số thuế công ty, mã số thuế là...",
+        "explanation": "Câu nói chuẩn xác và lịch sự khi bạn muốn thu ngân in mã số thuế doanh nghiệp lên hóa đơn.",
+        "phrase_role": "recommended",
+        "metadata": "{\"thought_summary\":\"Khi mua hàng tại Đài Loan và cần lấy hóa đơn công ty để khấu trừ chi phí, việc sử dụng đúng cụm từ '打統編' cùng mã số 8 chữ số là rất quan trọng. Cần lưu ý phân biệt rõ giữa mã số thuế (統編) và bản thân tờ hóa đơn (發票).\",\"variations\":[{\"tw\":\"我要打統編。\",\"pinyin\":\"Wǒ yào dǎ tǒng biān.\",\"vi\":\"Tôi muốn in mã số thuế công ty.\",\"tag\":\"Cách nói ngắn gọn\"}],\"key_words\":[{\"word\":\"統一編號\",\"pinyin\":\"tǒngyī biānhào\",\"meaning\":\"Mã số thống nhất (mã số thuế doanh nghiệp gồm 8 chữ số tại Đài Loan).\"},{\"word\":\"統一發票\",\"pinyin\":\"tǒngyī fāpiào\",\"meaning\":\"Hóa đơn thống nhất tại Đài Loan (đồng thời kiêm vé số trúng thưởng).\"}],\"cultural_insight\":\"Tại Đài Loan, hóa đơn (統一發票) có chức năng như một vé số kiến thiết với các kỳ quay thưởng định kỳ. Do đó, việc phân biệt rõ giữa hóa đơn cá nhân thông thường và hóa đơn doanh nghiệp (打統編) là quy trình kế toán - thuế vụ rất phổ biến.\",\"phrase_role\":\"recommended\"}"
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": [],
+      "realUiResult": {
+        "role": "recommended",
+        "label": "Câu khuyên dùng (Chuẩn Đài)",
+        "badgeStyleKey": "phraseBadgeRecommended",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasThought": true,
+        "hasVariations": true,
+        "variationsCount": 1,
+        "hasVocab": true,
+        "vocabCount": 2,
+        "hasCulture": true,
+        "hasAnyCollapsible": true
+      }
+    }
+  },
+  {
+    "tcId": "TC10",
+    "name": "Từ chối cho vay tiền",
+    "prompt": "Một người bạn ở Đài Loan nhiều lần mượn tiền của tôi. Lần này tôi muốn từ chối dứt khoát và yêu cầu bạn ấy không tiếp tục hỏi vay, nhưng không muốn xúc phạm họ. Hãy viết một câu tiếng Hoa Phồn thể tự nhiên, đúng ý và giải thích ngắn vì sao câu đó giữ được ranh giới.",
+    "criteria": "Bảo toàn 2 ý (từ chối + yêu cầu không hỏi vay nữa); giữ ranh giới rõ ràng không xúc phạm; pinyin và bản dịch khớp.",
+    "flash": {
+      "latencyMs": 1629,
+      "tokens": {
+        "candidates": 275,
+        "thinking": 0
+      },
+      "output": {
+        "content": "Để từ chối dứt khoát nhưng vẫn giữ hòa khí, bạn có thể dùng câu: 「最近手頭真的比較緊，可能沒辦法借你哦。而且我目前的財務狀況也不適合再借別人錢了。」 Câu này từ chối thẳng thắn nhưng dùng lý do cá nhân (kẹt tiền) và nhẹ nhàng đặt ranh giới tài chính mà không dùng từ ngữ phán xét hay tổn thương đối phương.",
+        "tw": "最近手頭真的比較緊，可能沒辦法借你哦。而且我目前的財務狀況也不適合再借別人錢了。",
+        "pinyin": "Zuìjìn shǒutóu zhēn de bǐjiào jǐn, kěnéng méi bànfǎ jiè nǐ ó. Érqiě wǒ mùqián de cáiwù zhuàngkuàng yě bù shìhé zài jiè biérén qián le.",
+        "vi": "Dạo này tiền bạc thực sự khá kẹt, có lẽ không thể cho bạn mượn được đâu. Hơn nữa tình hình tài chính hiện tại của tôi cũng không phù hợp để cho người khác mượn tiền nữa.",
+        "explanation": "Câu này giúp khẳng định giới hạn tài chính cá nhân một cách lịch sự, không làm mất lòng."
+      },
+      "uiSimulated": {
+        "hasThought": false,
+        "hasTw": true,
+        "badgeLabel": "Câu mẫu chuẩn Đài",
+        "showExplanationBox": true,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 1.5,
+        "dataStructureUi": 1.5,
+        "total": 9
+      },
+      "defects": [
+        "Chỉ từ chối mượn tiền 이번 (lần này) do kẹt tiền, chưa thể hiện rõ ý 'yêu cầu bạn ấy không tiếp tục hỏi vay trong tương lai' theo đúng đòi hỏi của đề bài."
+      ]
+    },
+    "reasoning": {
+      "p1LatencyMs": 4460,
+      "p2LatencyMs": 8610,
+      "totalLatencyMs": 13070,
+      "p1Tokens": {
+        "candidates": 307,
+        "thinking": 0
+      },
+      "p2Tokens": {
+        "candidates": 508,
+        "thinking": 0
+      },
+      "totalTokens": 815,
+      "p1Draft": "Bạn có thể dùng câu nói tự nhiên và lịch thiệp sau: 「不好意思，我最近手頭真的比較緊，可能沒辦法再借你錢了。而且頻繁借錢對我們彼此的關係不太好，以後這類的事我們就不要再提了喔。」...",
+      "auditNotes": "Bản phác thảo đã sử dụng hoàn toàn chữ Phồn thể chuẩn Đài Loan, ngữ pháp tự nhiên, lịch sự và thiết lập ranh giới rõ ràng. Đã bổ sung từ khóa hữu ích '手頭緊'.",
+      "thoughtSummary": "Khi từ chối các yêu cầu nhạy cảm như mượn tiền, việc viện lý do kinh tế cá nhân kết hợp với việc đặt ranh giới dứt khoát nhưng nhã nhặn giúp giảm thiểu tổn thương cho mối quan hệ.",
+      "output": {
+        "content": "Để từ chối dứt khoát nhưng vẫn giữ được sự lịch thiệp khi từ chối cho bạn bè mượn tiền, bạn có thể dùng câu sau: 「不好意思，我最近手頭真的比較緊，可能沒辦法再借你錢了。而且頻繁借錢對我們彼此的關係不太好，以後這類的事我們就不要再提了喔。」. Câu này khéo léo kết hợp việc từ chối dựa vào hoàn cảnh khách quan, sau đó đưa ra ranh giới rõ ràng nhưng dùng ngữ khí nhẹ nhàng để giảm bớt sự đối kháng.",
+        "tw": "不好意思，我最近手頭真的比較緊，可能沒辦法再借你錢了。而且頻繁借錢對我們彼此的關係不太好，以後這類的事我們就不要再提了喔。",
+        "pinyin": "Bù hǎoyìsi, wǒ zuìjìn shǒutóu zhēn de bǐjiào jǐn, kěnéng méi bànfǎ zài jiè nǐ qián le. Érqiě pínfán jiè qián duì wǒmen bǐcǐ de guānxì bú tài hǎo, yǐhòu zhè lèi de shì wǒmen jiù bú yào zài tí le o.",
+        "vi": "Ngại quá, dạo này tôi thực sự khá túng thiếu, chắc không thể cho bạn mượn tiền nữa đâu. Hơn nữa, việc mượn tiền thường xuyên không tốt cho quan hệ của chúng ta đâu, từ nay chuyện này chúng ta đừng nhắc lại nữa nhé.",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": true,
+        "hasTw": true,
+        "badgeLabel": "Câu khuyên dùng (Chuẩn Đài)",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": true,
+        "vocabCount": 1,
+        "hasCulture": false,
+        "hasAnyCollapsible": true
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": []
+    }
+  },
+  {
+    "tcId": "TC11",
+    "name": "So sánh cách dùng tại Đài Loan và Đại Lục",
+    "prompt": "Trong ngữ cảnh ở Đài Loan, hãy so sánh các cách nói 「地鐵站」、「捷運站」、「軟件」 và 「軟體」. Từ nào tự nhiên hơn trong giao tiếp địa phương? Phân biệt từ ít dùng ở Đài Loan với từ sai hoàn toàn; không gọi mọi cách dùng của Đại Lục là sai ngữ pháp.",
+    "criteria": "Nhận diện 捷運站 và 軟體 là chuẩn bản xứ Đài Loan; phân biệt khác biệt địa phương vs lỗi ngữ pháp; không quy chụp tuyệt đối.",
+    "flash": {
+      "latencyMs": 1105,
+      "tokens": {
+        "candidates": 109,
+        "thinking": 0
+      },
+      "output": {
+        "content": "Ở Đài Loan, 「捷運站」 và 「軟體」 là những từ tự nhiên nhất trong giao tiếp địa phương.「地鐵站」 và 「軟件」 là từ dùng phổ biến ở Đại Lục; người Đài Loan vẫn hiểu được nhưng không phải là từ sai ngữ pháp, chỉ là ít được sử dụng trong đời sống hàng ngày tại Đài Loan.",
+        "tw": "",
+        "pinyin": "",
+        "vi": "",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": false,
+        "hasTw": false,
+        "badgeLabel": "",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": []
+    },
+    "reasoning": {
+      "p1LatencyMs": 2989,
+      "p2LatencyMs": 8706,
+      "totalLatencyMs": 11695,
+      "p1Tokens": {
+        "candidates": 178,
+        "thinking": 0
+      },
+      "p2Tokens": {
+        "candidates": 551,
+        "thinking": 0
+      },
+      "totalTokens": 729,
+      "p1Draft": "Tại Đài Loan, các cách nói tự nhiên nhất trong giao tiếp hàng ngày là 「捷運站」 và 「軟體」. Cụ thể: Về giao thông, 「捷運站」 là từ chuẩn xác và thông dụng nhất cho hệ thống tàu điện ngầm (MRT) tại Đài Loan...",
+      "auditNotes": "Đã kiểm định bản nháp, xác nhận tính chính xác trong việc phân biệt từ vựng vùng miền mà không gán nhãn sai ngữ pháp. Đảm bảo 100% chữ Phồn thể chuẩn Đài Loan.",
+      "thoughtSummary": "Nắm vững sự khác biệt từ vựng giữa Đài Loan và Đại Lục giúp bạn sử dụng đúng từ tự nhiên trong giao tiếp địa phương như dùng 捷運站 thay vì 地鐵站 và 軟體 thay vì 軟件 mà vẫn tôn trọng tính hợp lệ của các biến thể vùng miền.",
+      "output": {
+        "content": "Tại Đài Loan, các cách nói tự nhiên và chuẩn xác nhất trong giao tiếp hàng ngày là 捷運站 và 軟體. Cụ thể như sau: 1. Về giao thông: 捷運站 (Jiéyùn zhàn) là từ chỉ hệ thống tàu điện ngầm (MRT) tại các đô thị lớn như Đài Bắc và Cao Hùng. Trong khi đó, 地鐵站 (dìtiě zhàn) là cách gọi phổ biến ở Đại Lục hoặc Hồng Kông; người Đài Loan nghe vẫn có thể hiểu qua ngữ cảnh nhưng hoàn toàn không dùng trong đời sống hàng ngày. 2. Về công nghệ: 軟體 (ruǎntǐ) là thuật ngữ tiêu chuẩn tại Đài Loan để chỉ phần mềm máy tính hoặc điện thoại. Ngược lại, 軟件 (ruǎnjiàn) là cách gọi dùng ở Đại Lục. Đây không phải là lỗi ngữ pháp hay từ sai hoàn toàn, mà chỉ là sự khác biệt về quy chuẩn từ vựng vùng miền. Tuy nhiên, nếu bạn dùng 軟件 ở Đài Loan, người nghe sẽ nhận ra ngay đó là thuật ngữ kiểu Đại Lục, ít khi được sử dụng và nghe không tự nhiên trong giao tiếp địa phương.",
+        "tw": "",
+        "pinyin": "",
+        "vi": "",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": true,
+        "hasTw": false,
+        "badgeLabel": "",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": true,
+        "vocabCount": 4,
+        "hasCulture": false,
+        "hasAnyCollapsible": true
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": []
+    }
+  },
+  {
+    "tcId": "TC12",
+    "name": "Ý ngầm trong môi trường công việc",
+    "prompt": "Đồng nghiệp Đài Loan nói với tôi 「這件事再看看好了」 sau khi tôi đề xuất một phương án công việc. Câu này có nghĩa là họ đồng ý, không đồng ý hay chưa muốn quyết định? Phân tích các khả năng và dấu hiệu ngữ cảnh cần biết. Không tự gán ý định cho họ.",
+    "criteria": "Phân tích các khả năng (trì hoãn, chưa đủ tin, từ chối khéo); nêu dấu hiệu quan sát; không kết luận võ đoán một chiều.",
+    "flash": {
+      "latencyMs": 1242,
+      "tokens": {
+        "candidates": 193,
+        "thinking": 0
+      },
+      "output": {
+        "content": "Câu này không có nghĩa là đồng ý hay từ chối dứt khoát mà mang tính hoãn binh. Có 3 khả năng: (1) Cần thêm thời gian cân nhắc hoặc chờ cấp trên chỉ đạo, (2) Tạm hoãn do có ưu tiên khác cấp bách hơn, (3) Từ chối khéo để giữ hòa khí. Cần quan sát thêm biểu cảm, thái độ và hành động tiếp theo của họ.",
+        "tw": "這件事再看看好了",
+        "pinyin": "zhè jiàn shì zài kàn kàn hǎo le",
+        "vi": "Việc này để xem lại đã nhé.",
+        "explanation": "Câu nói này rất phổ biến trong công sở Đài Loan khi đối phương chưa muốn đưa ra câu trả lời ngay lập tức.",
+        "phrase_role": "quote"
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": [],
+      "realUiResult": {
+        "role": "quote",
+        "label": "Câu trích dẫn (Đối tác nói)",
+        "badgeStyleKey": "phraseBadgeQuote",
+        "hasTw": true,
+        "showExplanationBox": true,
+        "hasAnyCollapsible": false
+      }
+    },
+    "reasoning": {
+      "p1LatencyMs": 1273,
+      "p2LatencyMs": 6000,
+      "totalLatencyMs": 7273,
+      "p1Tokens": {
+        "candidates": 207,
+        "thinking": 0
+      },
+      "p2Tokens": {
+        "candidates": 379,
+        "thinking": 0
+      },
+      "totalTokens": 598,
+      "p1Draft": "Câu 「這件事再看看好了」 không mang nghĩa đồng ý hay từ chối dứt khoát, mà thể hiện sự hoãn binh hoặc chưa muốn quyết định ngay tại thời điểm đó. Tùy thuộc vào ngữ cảnh, câu này có thể bao gồm ba khả năng khách quan: (1) Họ thực sự cần thêm thời gian để cân nhắc, tra cứu dữ liệu hoặc chờ ý kiến từ cấp trên; (2) Họ đang bận với các công việc ưu tiên khác nên muốn tạm gác vấn đề này lại; (3) Đây là cách từ chối khéo léo để giữ hòa khí, tránh làm bạn mất mặt ngay lúc đó. Để hiểu đúng ý định của họ, bạn cần quan sát thêm các động thái tiếp theo như họ có chủ động quay lại bàn về vấn đề này không, hoặc thái độ khi bạn nhắc lại.",
+      "auditNotes": "Đã kiểm định: Xác định đúng vai trò quote, đảm bảo tính trung lập khách quan với 3 khả năng không áp đặt, áp dụng triệt để zero bloat cho variations, key_words, cultural_insight.",
+      "thoughtSummary": "Phân tích ngữ cảnh thực tế của câu nói lấp lửng trong công sở Đài Loan, giúp người học hiểu rõ đây thường là tín hiệu hoãn binh hoặc từ chối khéo chứ không phải là sự đồng ý.",
+      "output": {
+        "content": "Câu 「這件事再看看好了」 không mang nghĩa đồng ý hay từ chối dứt khoát, mà thể hiện sự hoãn binh hoặc chưa muốn quyết định ngay tại thời điểm đó. Tùy thuộc vào ngữ cảnh, câu này bao gồm ba khả năng khách quan ngang hàng: (1) Họ thực sự cần thêm thời gian để cân nhắc, tra cứu dữ liệu hoặc chờ ý kiến chỉ đạo từ cấp trên; (2) Họ đang vướng các công việc ưu tiên khác mang tính cấp bách hơn nên muốn tạm gác vấn đề này lại; (3) Đây là một cách từ chối khéo léo để giữ hòa khí, tránh làm bạn mất mặt ngay lúc đó. Để hiểu đúng ý định, bạn cần quan sát thêm các động thái tiếp theo như họ có chủ động quay lại bàn về vấn đề này không, hoặc thái độ khi bạn khéo léo nhắc lại.",
+        "tw": "這件事再看看好了",
+        "pinyin": "zhè jiàn shì zài kàn kàn hǎo le",
+        "vi": "Việc này để xem xét lại đã.",
+        "explanation": "",
+        "phrase_role": "quote",
+        "metadata": "{\"thought_summary\":\"Trong môi trường làm việc, câu nói lấp lửng này không mang nghĩa đồng ý hay từ chối tuyệt đối, mà là một khoảng đệm để cân nhắc. Việc hiểu khách quan giúp bạn ứng xử khéo léo hơn mà không ép buộc đối phương.\",\"variations\":[],\"key_words\":[],\"cultural_insight\":\"\",\"phrase_role\":\"quote\"}"
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": [],
+      "realUiResult": {
+        "role": "quote",
+        "label": "Câu trích dẫn (Đối tác nói)",
+        "badgeStyleKey": "phraseBadgeQuote",
+        "hasTw": true,
+        "showExplanationBox": false,
+        "hasThought": true,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      }
+    }
+  },
+  {
+    "tcId": "TC13",
+    "name": "Chỉ hỏi ngữ pháp, không tạo thẻ thừa",
+    "prompt": "Giải thích bằng tiếng Việt sự khác nhau giữa 「我吃了」 và 「天氣變冷了」. Chỉ giải thích chức năng của 「了」 trong hai câu này; không tạo câu ví dụ mới, không liệt kê từ vựng và không thêm phần văn hóa.",
+    "criteria": "Giải thích đúng chức năng 了 (hoàn thành hành động vs biến đổi trạng thái); không quy chụp 了 luôn là quá khứ; không sinh thẻ thừa.",
+    "flash": {
+      "latencyMs": 1100,
+      "tokens": {
+        "candidates": 97,
+        "thinking": 0
+      },
+      "output": {
+        "content": "Trong câu 「我吃了」, chữ 「了」 biểu thị hành động ăn đã hoàn thành (thì quá khứ). Trong câu 「天氣變冷了」, chữ 「了」 biểu thị sự thay đổi trạng thái, nghĩa là thời tiết đã bắt đầu trở nên lạnh hơn so với trước.",
+        "tw": "",
+        "pinyin": "",
+        "vi": "",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": false,
+        "hasTw": false,
+        "badgeLabel": "",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      },
+      "scores": {
+        "languageAccuracy": 1.5,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 9.5
+      },
+      "defects": [
+        "Giải thích chữ 了 trong '我吃了' bằng khái niệm 'thì quá khứ' là thiếu chính xác về mặt ngữ pháp tiếng Hán (đây là thể/aspect hoàn thành hành động)."
+      ]
+    },
+    "reasoning": {
+      "p1LatencyMs": 2573,
+      "p2LatencyMs": 5142,
+      "totalLatencyMs": 7715,
+      "p1Tokens": {
+        "candidates": 115,
+        "thinking": 0
+      },
+      "p2Tokens": {
+        "candidates": 284,
+        "thinking": 0
+      },
+      "totalTokens": 399,
+      "p1Draft": "Sự khác biệt về chức năng của chữ 「了」 trong hai câu này nằm ở việc biểu thị hành động hoàn thành hay thay đổi trạng thái. Trong câu 「我吃了」, 「了」 đóng vai trò là trợ từ động thái, biểu thị hành động ăn đã hoàn thành (đã ăn rồi)...",
+      "auditNotes": "Kiểm định bản nháp: Nội dung giải thích chính xác chức năng của '了' trong hai câu, tuân thủ yêu cầu không tạo thêm ví dụ hay từ vựng. Văn bản hoàn toàn ở dạng Phồn thể.",
+      "thoughtSummary": "Chữ '了' có các chức năng ngữ pháp khác nhau tùy thuộc vào vị trí: biểu thị hành động hoàn thành khi đi sau động từ, hoặc biểu thị sự thay đổi trạng thái khi đặt ở cuối câu.",
+      "output": {
+        "content": "Sự khác biệt về chức năng của chữ 「了」 trong hai câu này nằm ở việc biểu thị hành động hoàn thành hay thay đổi trạng thái. Trong câu 「我吃了」, 「了」 đóng vai trò là trợ từ động thái, biểu thị hành động ăn đã hoàn thành (đã ăn rồi). Trong câu 「天氣變冷了」, 「了」 biểu thị sự thay đổi trạng thái, cho thấy thời tiết đã chuyển sang một trạng thái mới so với trước đó (trời đã trở lạnh).",
+        "tw": "",
+        "pinyin": "",
+        "vi": "",
+        "explanation": ""
+      },
+      "uiSimulated": {
+        "hasThought": true,
+        "hasTw": false,
+        "badgeLabel": "",
+        "showExplanationBox": false,
+        "hasVariations": false,
+        "variationsCount": 0,
+        "hasVocab": false,
+        "vocabCount": 0,
+        "hasCulture": false,
+        "hasAnyCollapsible": false
+      },
+      "scores": {
+        "languageAccuracy": 2,
+        "taiwanNaturalness": 2,
+        "pinyinTranslation": 2,
+        "taskFocusNoBloat": 2,
+        "dataStructureUi": 2,
+        "total": 10
+      },
+      "defects": []
+    }
+  }
+]

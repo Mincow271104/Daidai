@@ -38,6 +38,7 @@ import {
 import { sendAiChatMessage, transcribeSpeech } from '../services/api';
 import { useRecorder } from '../hooks/useRecorder';
 import { speakChinese } from '../utils/speak';
+import { getPhraseBadgeInfo } from '../utils/aiChatUi';
 import { ensureOnline } from '../services/network';
 import { ClickableSentence } from '../components/ClickableSentence';
 import { WordContextModal } from '../components/WordContextModal';
@@ -472,10 +473,10 @@ export function AiChatScreen() {
 
           {/* Card từ vựng / câu mẫu Phồn thể Đài Loan nếu có */}
           {hasTw && (() => {
-            const isSentence = item.tw!.trim().length > 6 || /[，。？！,?!~…]/.test(item.tw!);
-            const badgeLabel = isSentence
-              ? (metadataObj ? 'Câu khuyên dùng (Chuẩn Đài)' : 'Câu mẫu chuẩn Đài')
-              : 'Từ vựng chuẩn Đài';
+            const badgeInfo = getPhraseBadgeInfo(item, metadataObj);
+            const badgeStyle = (styles as any)[badgeInfo.badgeStyleKey] || styles.phraseBadge;
+            const textStyle = (styles as any)[badgeInfo.textStyleKey] || styles.phraseBadgeText;
+
             const isExplanationDuplicate =
               !item.explanation ||
               item.explanation.trim() === item.content.trim() ||
@@ -484,9 +485,9 @@ export function AiChatScreen() {
             return (
               <View style={styles.phraseCard}>
                 <View style={styles.phraseCardHeader}>
-                  <View style={[styles.phraseBadge, !!metadataObj && styles.phraseBadgeReasoning]}>
-                    <Text style={[styles.phraseBadgeText, !!metadataObj && styles.phraseBadgeTextReasoning]}>
-                      {badgeLabel}
+                  <View style={[styles.phraseBadge, badgeStyle]}>
+                    <Text style={[styles.phraseBadgeText, textStyle]}>
+                      {badgeInfo.label}
                     </Text>
                   </View>
 
@@ -1428,6 +1429,42 @@ const styles = StyleSheet.create({
   },
   phraseBadgeTextReasoning: {
     color: '#4F46E5',
+    fontWeight: '800',
+  },
+  phraseBadgeRecommended: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#DDD6FE',
+    borderWidth: 1,
+  },
+  phraseBadgeTextRecommended: {
+    color: '#7C3AED',
+    fontWeight: '800',
+  },
+  phraseBadgeQuote: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+    borderWidth: 1,
+  },
+  phraseBadgeTextQuote: {
+    color: '#0284C7',
+    fontWeight: '800',
+  },
+  phraseBadgeAnalysis: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+  },
+  phraseBadgeTextAnalysis: {
+    color: '#D97706',
+    fontWeight: '800',
+  },
+  phraseBadgeVocab: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
+  },
+  phraseBadgeTextVocab: {
+    color: '#059669',
     fontWeight: '800',
   },
   // ─── Collapsible Accordion Styling ────────────────────────────
