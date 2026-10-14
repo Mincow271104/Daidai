@@ -1729,10 +1729,13 @@ export async function sendAiChatMessage(
         `- Hỗ trợ học tiếng Trung Phồn thể Đài Loan: từ vựng, ngữ pháp, mẫu câu, giải nghĩa, văn hóa đời sống.\n\n` +
         `NGUYÊN TẮC PHẢN HỒI (TASK-FOCUSED & ANTI-OVERINTERPRETATION):\n` +
         `1. ĐÚNG TRỌNG TÂM: Trả lời thẳng vào câu hỏi của người dùng, ngắn gọn, súc tích bằng tiếng Việt tự nhiên trong trường 'content'.\n` +
-        `2. HỎI NGHĨA TỪ/CÂU: Nếu người dùng hỏi nghĩa của một từ hoặc câu (ví dụ: "「便當」 nghĩa là gì?"), BẮT BUỘC cung cấp từ gốc đó vào 'tw' (100% chữ Phồn thể), 'pinyin' có thanh điệu đầy đủ, và 'vi' (nghĩa tiếng Việt chính xác). Không tự ý chêm lịch sử từ nguyên nếu không được hỏi.\n` +
-        `3. KHÔNG SUY DIỄN MỘT CHIỀU: Khi câu nói của người Đài mơ hồ hoặc có nhiều cách hiểu (ví dụ: 「改天再約」), nêu rõ đây có thể là lời hẹn chưa chốt ngày hoặc lời chào xã giao; chỉ riêng câu nói chưa đủ thông tin để kết luận chắc chắn ý định của đối phương.\n` +
-        `4. 100% CHỮ PHỒN THỂ ĐÀI LOAN: Mọi chữ Hán trong 'tw' phải là Phồn thể chuẩn (繁體字), tuyệt đối không dùng Giản thể.\n` +
-        `5. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi hoàn toàn không liên quan tiếng Trung, từ chối lịch sự trong 'content' dưới 15 từ, các trường khác để chuỗi rỗng "".` +
+        `2. HỎI NGHĨA TỪ ĐƠN LẺ: Nếu người dùng hỏi nghĩa của một từ (ví dụ: "「便當」 nghĩa là gì?"), cung cấp từ gốc đó vào 'tw' (100% chữ Phồn thể), 'pinyin' có thanh điệu đầy đủ, và 'vi' (nghĩa tiếng Việt chính xác). Trường 'content' giải thích ngắn gọn, trường 'explanation' để chuỗi rỗng "" để tránh lặp lại nội dung đã có trong 'content' hay 'vi'. Tuyệt đối không tự ý chêm lịch sử từ nguyên nếu không được hỏi.\n` +
+        `3. CÂU HỎI VĂN HÓA / PHÂN TÍCH / LÝ THUYẾT (KHÔNG CẦN CÂU NÓI TIẾNG HOA): Nếu người dùng hỏi về văn hóa (ví dụ: có phải ai cũng kiêng số 4), phong tục, hoặc hỏi phân tích mà không yêu cầu học câu nói để giao tiếp: Trả lời hoàn chỉnh trong 'content'. CÁC TRƯỜNG 'tw', 'pinyin', 'vi', 'explanation' ĐỂ CHUỖI RỖNG "" (tuyệt đối không tự bịa ra từ chung chung như '四' hay '台灣文化' để tạo thêm thẻ giao diện thừa thãi).\n` +
+        `4. THUẬT NGỮ CHUẨN XÁC: Khi dịch hay đề cập đến 「數字禁忌」, LUÔN dịch là "những điều kiêng kỵ liên quan đến con số". Về ngữ âm: 「四」(sì) và 「死」(sǐ) là phát âm gần nhau (near-homophones) do khác thanh điệu.\n` +
+        `5. TRÁNH KHÁI QUÁT HÓA ĐỊNH KIẾN: Tuyệt đối tránh các nhận định quy chụp như người lớn tuổi, người kinh doanh hay giới trẻ đều có một cách nhìn nhất định, trừ khi có căn cứ xã hội học cụ thể. Hãy mô tả khách quan mức độ phổ biến theo từng bối cảnh cụ thể (thang máy tòa nhà, phòng bệnh viện, tiền mừng hỷ sự...). \n` +
+        `6. KHÔNG SUY DIỄN MỘT CHIỀU: Khi câu nói của người Đài mơ hồ hoặc có nhiều cách hiểu (ví dụ: 「改天再約」), nêu rõ đây có thể là lời hẹn chưa chốt ngày hoặc lời chào xã giao; chỉ riêng câu nói chưa đủ thông tin để kết luận chắc chắn ý định của đối phương.\n` +
+        `7. 100% CHỮ PHỒN THỂ ĐÀI LOAN: Mọi chữ Hán trong 'tw' phải là Phồn thể chuẩn (繁體字), tuyệt đối không dùng Giản thể.\n` +
+        `8. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi hoàn toàn không liên quan tiếng Trung, từ chối lịch sự trong 'content' dưới 15 từ, các trường khác để chuỗi rỗng "".` +
         feedbackSection;
 
       const reply = await callGemini<AiChatReply>(
@@ -1756,12 +1759,15 @@ export async function sendAiChatMessage(
     const pass1System =
       `Bạn là Chuyên gia ngôn ngữ & Đời sống Đài Loan (Taiwanese Linguistic & Context Drafter).\n\n` +
       `Nhiệm vụ: Tạo bản phác thảo câu trả lời tốt nhất cho câu hỏi của người dùng dựa trên bối cảnh thực tế tại Đài Loan:\n` +
-      `- Trả lời trực diện, tự nhiên, đúng trọng tâm câu hỏi.\n` +
+      `- Trả lời trực diện, tự nhiên, đúng trọng tâm câu hỏi vào bản phác thảo.\n` +
       `- Nếu hỏi câu giao tiếp: Đưa ra cách diễn đạt tự nhiên nhất của người Đài (100% Phồn thể, có pinyin và nghĩa tiếng Việt).\n` +
-      `- Nếu hỏi nghĩa một từ (như 「便當」): Giải thích đúng nghĩa súc tích, không đưa từ nguyên ngoài lề nếu không hỏi.\n` +
+      `- Nếu hỏi nghĩa một từ (như 「便當」): Trình bày từ, pinyin và nghĩa súc tích; không đưa từ nguyên ngoài lề nếu không hỏi; không lặp lại nội dung lòng vòng.\n` +
+      `- Nếu hỏi về văn hóa / phong tục (như kiêng số 4) hoặc phân tích lý thuyết mà không cần câu khẩu ngữ tiếng Hoa: Tập trung phân tích trong câu trả lời chính, KHÔNG tự chế ra từ vựng chung chung như '四' hay '數字禁忌'.\n` +
+      `- Chuẩn xác thuật ngữ: Luôn dịch 「數字禁忌」 là "những điều kiêng kỵ liên quan đến con số".\n` +
+      `- Tránh định kiến khái quát: Tuyệt đối không quy chụp như người lớn tuổi, người kinh doanh hay giới trẻ đều có một cách nhìn nhất định, trừ khi có căn cứ phù hợp. Hãy diễn đạt khách quan theo từng bối cảnh (thang máy, bệnh viện, tiền mừng...). \n` +
       `- Nếu hỏi ý nghĩa câu/từ mơ hồ (như 「改天再約」): Phân biệt rõ ràng điều quan sát được, các khả năng có thể xảy ra và điều chưa thể kết luận nếu thiếu dữ kiện.\n` +
       `- Nếu người dùng nhờ sửa câu: Giữ nguyên ý định gốc của người dùng, chỉ ra vấn đề chữ viết hoặc sắc thái và đề xuất cách nói lịch thiệp.\n` +
-      `- Không ép buộc phải có 3 phương án, không ép buộc phải có từ vựng hay văn hóa nếu không cần thiết.` +
+      `- Cắt tỉa tinh gọn (Zero Bloat): Ưu tiên câu trả lời chính, không ép buộc phải có biến thể (variations), từ vựng (key_words) hay lưu ý văn hóa (cultural_insight) nếu không thực sự hữu ích.` +
       feedbackSection;
 
     let pass1Draft = '';
@@ -1783,15 +1789,16 @@ export async function sendAiChatMessage(
       `Bạn là Trưởng ban Kiểm định Chất lượng Tiếng Trung Đài Loan (Taiwanese Traditional Chinese Quality Auditor & Editor).\n\n` +
       `Nhiệm vụ: Tiếp nhận câu hỏi gốc của người dùng và Bản phác thảo (Draft) từ Lượt 1 để tiến hành kiểm định độc lập, phát hiện lỗi và chỉnh sửa trực tiếp thành kết quả cuối cùng theo schema.\n\n` +
       `BỘ TIÊU CHÍ KIỂM ĐỊNH & SỬA LỖI:\n` +
-      `1. TRỌNG TÂM: Bản thảo đã trả lời đúng câu hỏi chưa? Với câu hỏi nghĩa từ (như 「便當」), BẮT BUỘC điền thẻ chính 'primary_phrase' (tw, pinyin, vi) đầy đủ, và KHÔNG đưa thông tin từ nguyên ngoài lề (như Ekiben) nếu người dùng không hỏi.\n` +
-      `2. CHÍNH TẢ PHỒN THỂ & ĐỘ TỰ NHIÊN ĐÀI LOAN: Kiểm tra từng chữ Hán trong 'primary_phrase' và 'variations'. BẮT BUỘC 100% Phồn thể chuẩn Đài Loan. Phát hiện và sửa ngay mọi chữ Giản thể (phải dùng 還 thay 还, 裡 thay 里, 門 thay 门, 車 thay 车, 讓 thay 让, 擠 thay 挤, 幫 thay 帮...).\n` +
-      `3. BÍNH ÂM & BẢN DỊCH: Bính âm phải có đầy đủ thanh điệu chuẩn xác, khớp từng chữ Hán. Bản dịch tiếng Việt chuẩn xác, giữ đúng nghĩa.\n` +
-      `4. CHỐNG SUY DIỄN VÕ ĐOÁN (EPISTEMIC HUMILITY): Với câu mơ hồ (như 「改天再約」), PHẢI phân biệt rõ: điều quan sát được (chưa có ngày cụ thể) vs các khả năng (hẹn thật chờ dời lịch / xã giao / từ chối khéo) vs dấu hiệu cần quan sát thêm. TUYỆT ĐỐI KHÔNG mặc định khẳng định một khả năng là chắc chắn khi thiếu ngữ cảnh.\n` +
-      `5. GIỮ NGUYÊN Ý ĐỊNH GỐC KHI SỬA CÂU: Khi người dùng nhờ sửa câu (ví dụ: '你可以让开吗，我要下车'), câu sửa PHẢI giữ được đầy đủ ý định ban đầu (ý 'tôi muốn xuống xe'), gợi ý câu xin phép lịch sự: 「不好意思，我要下車，可以借過一下嗎？謝謝。」; đồng thời bóc tách rõ 3 khía cạnh: chữ Giản thể, sắc thái cộc cằn, và cách diễn đạt nhã nhặn.\n` +
-      `6. CHUẨN XÁC VĂN HÓA & NGỮ ÂM: Khi giải thích văn hóa (như kiêng số 4), phải chuẩn ngữ âm: 「四」(sì) và 「死」(sǐ) là phát âm gần nhau (near-homophones) do khác thanh điệu. Tránh quy chụp tuyệt đối hóa cho mọi người hay mọi hoàn cảnh.\n` +
-      `7. CẮT TỈA SCHEMA (ANTI-BLOAT): Nếu không có biến thể thực sự hữu ích, để 'variations' = []. Nếu không có từ vựng then chốt cần học thêm, để 'key_words' = []. Nếu không có lưu ý văn hóa đặc thù, để 'cultural_insight' = "". Không tự bịa nội dung cho đầy form.\n` +
-      `8. NGUYÊN TẮC CHỈNH SỬA: Nếu bản phác thảo đã chuẩn mực, giữ nguyên, KHÔNG ĐƯỢC tự bịa lỗi. Nếu có lỗi, sửa ngay vào kết quả cuối. Ghi tóm tắt hành động kiểm định vào 'audit_notes'.\n` +
-      `9. 'thought_summary': Viết lời giải thích súc tích, mang tính sư phạm dành cho NGƯỜI HỌC (về bối cảnh và lý do chọn câu nói này). KHÔNG đưa nhật ký soi lỗi kỹ thuật vào trường này.`;
+      `1. CÂU HỎI HỎI NGHĨA TỪ (như 「便當」): Trình bày từ gốc, pinyin và nghĩa tiếng Việt trong 'primary_phrase'. Không lặp lại nguyên nội dung ở nhiều thẻ: trường 'explanation' để chuỗi rỗng "" nếu 'content' hay 'vi' đã giải thích. BẮT BUỘC để variations = [], key_words = [], cultural_insight = "" (không tạo thẻ phụ thừa thãi). Không đưa thông tin từ nguyên ngoài lề (như Ekiben) nếu không hỏi.\n` +
+      `2. CÂU HỎI VĂN HÓA / LÝ THUYẾT KHÔNG CẦN CÂU NÓI TIẾNG HOA (như kiêng số 4): Người dùng đang hỏi tìm hiểu văn hóa chứ không học câu khẩu ngữ để giao tiếp. TUYỆT ĐỐI KHÔNG tự tạo 'primary_phrase' chung chung vô nghĩa (như '四' hay '數字禁忌'). Hãy đặt primary_phrase = { tw: "", pinyin: "", vi: "", explanation: "" } để giao diện ẩn hoàn toàn thẻ câu/từ vựng và chỉ hiển thị câu trả lời tinh gọn! variations = [], key_words = [] trừ khi có từ đặc thù thực sự cần ghi chú.\n` +
+      `3. CHUẨN XÁC DỊCH THUẬT VĂN HÓA: Dịch 「數字禁忌」 thành "những điều kiêng kỵ liên quan đến con số". Về ngữ âm: 「四」(sì) và 「死」(sǐ) là phát âm gần nhau (near-homophones) do khác thanh điệu.\n` +
+      `4. CHỐNG ĐỊNH KIẾN KHÁI QUÁT: Tránh các nhận định khái quát như 'người lớn tuổi, người kinh doanh hay giới trẻ đều có một cách nhìn nhất định', trừ khi có căn cứ xã hội học cụ thể. Hãy mô tả khách quan các bối cảnh áp dụng thực tế (thang máy tòa nhà, tầng bệnh viện, tiền mừng hỷ sự...). \n` +
+      `5. CÂU HỎI PHÂN TÍCH NGẮN (như 「改天再約」): Ưu tiên câu trả lời chính trong 'content'. Tuân thủ Epistemic Humility (phân biệt: điều quan sát được vs các khả năng vs điều chưa thể kết luận). variations = [], key_words = [], cultural_insight = "". Không lấp đầy các trường chỉ để tạo thêm thẻ giao diện.\n` +
+      `6. GIỮ NGUYÊN Ý ĐỊNH GỐC KHI SỬA CÂU: Khi người dùng nhờ sửa câu (ví dụ: '你可以让开吗，我要下车'), câu sửa PHẢI giữ được đầy đủ ý định ban đầu (ý 'tôi muốn xuống xe'), gợi ý câu xin phép lịch sự: 「不好意思，我要下車，可以借過一下嗎？謝謝。」; đồng thời bóc tách rõ 3 khía cạnh: chữ Giản thể, sắc thái cộc cằn, và cách diễn đạt nhã nhặn.\n` +
+      `7. CHÍNH TẢ PHỒN THỂ 100%: Mọi chữ Hán phải là Phồn thể chuẩn Đài Loan. Sửa ngay mọi chữ Giản thể (phải dùng 還 thay 还, 裡 thay 里, 門 thay 门, 車 thay 车, 讓 thay 让, 擠 thay 挤, 幫 thay 帮...).\n` +
+      `8. BÍNH ÂM & BẢN DỊCH: Bính âm phải có đầy đủ thanh điệu chuẩn xác, khớp từng chữ Hán. Bản dịch tiếng Việt chuẩn xác, giữ đúng nghĩa.\n` +
+      `9. CẮT TỈA SCHEMA (ZERO BLOAT): Chỉ sinh variations, key_words và cultural_insight khi chúng THỰC SỰ HỮU ÍCH cho người học. Nếu không cần, để variations = [], key_words = [], cultural_insight = "". Tuyệt đối không tự bịa nội dung cho đầy form.\n` +
+      `10. 'thought_summary': Viết lời giải thích súc tích, mang tính sư phạm dành cho NGƯỜI HỌC (về bối cảnh và lý do chọn cách diễn đạt này). KHÔNG đưa nhật ký soi lỗi kỹ thuật vào trường này. Ghi tóm tắt hành động kiểm định vào 'audit_notes'.`;
 
     const pass2Schema = {
       type: 'OBJECT',
@@ -1864,7 +1871,12 @@ export async function sendAiChatMessage(
     }
 
     // LƯỢT 3: Phễu lọc an toàn bằng Code (Programmatic Sanitizer - 0ms)
-    const primaryTw = cleanChineseSentence(parsed?.primary_phrase?.tw || '');
+    const rawTw = (parsed?.primary_phrase?.tw || '').trim();
+    const primaryTw = rawTw ? cleanChineseSentence(rawTw) : '';
+    const primaryPinyin = (parsed?.primary_phrase?.pinyin || '').trim();
+    const primaryVi = (parsed?.primary_phrase?.vi || '').trim();
+    const primaryExp = (parsed?.primary_phrase?.explanation || '').trim();
+
     const variations = (parsed?.variations || []).map((v: any) => ({
       tw: cleanChineseSentence(v.tw || ''),
       pinyin: (v.pinyin || '').trim(),
@@ -1878,6 +1890,12 @@ export async function sendAiChatMessage(
       meaning: (k.meaning || '').trim(),
     })).filter((k: any) => !!k.word);
 
+    // Nếu primaryTw rỗng thì pinyin, vi, explanation cũng rỗng (ẩn hoàn toàn card trên giao diện)
+    const finalTw = primaryTw;
+    const finalPinyin = finalTw ? primaryPinyin : '';
+    const finalVi = finalTw ? primaryVi : '';
+    const finalExp = finalTw ? primaryExp : '';
+
     const metadata = JSON.stringify({
       thought_summary: parsed?.thought_summary || '',
       variations,
@@ -1887,10 +1905,10 @@ export async function sendAiChatMessage(
 
     return {
       content: parsed?.content || '',
-      tw: primaryTw,
-      pinyin: (parsed?.primary_phrase?.pinyin || '').trim(),
-      vi: (parsed?.primary_phrase?.vi || '').trim(),
-      explanation: (parsed?.primary_phrase?.explanation || '').trim(),
+      tw: finalTw,
+      pinyin: finalPinyin,
+      vi: finalVi,
+      explanation: finalExp,
       metadata,
     };
   } catch (err: any) {

@@ -471,57 +471,68 @@ export function AiChatScreen() {
           )}
 
           {/* Card từ vựng / câu mẫu Phồn thể Đài Loan nếu có */}
-          {hasTw && (
-            <View style={styles.phraseCard}>
-              <View style={styles.phraseCardHeader}>
-                <View style={[styles.phraseBadge, !!metadataObj && styles.phraseBadgeReasoning]}>
-                  <Text style={[styles.phraseBadgeText, !!metadataObj && styles.phraseBadgeTextReasoning]}>
-                    {metadataObj ? 'Câu khuyên dùng (Chuẩn Đài)' : 'Chuẩn Đài Loan'}
-                  </Text>
+          {hasTw && (() => {
+            const isSentence = item.tw!.trim().length > 6 || /[，。？！,?!~…]/.test(item.tw!);
+            const badgeLabel = isSentence
+              ? (metadataObj ? 'Câu khuyên dùng (Chuẩn Đài)' : 'Câu mẫu chuẩn Đài')
+              : 'Từ vựng chuẩn Đài';
+            const isExplanationDuplicate =
+              !item.explanation ||
+              item.explanation.trim() === item.content.trim() ||
+              item.explanation.trim() === item.vi?.trim();
+
+            return (
+              <View style={styles.phraseCard}>
+                <View style={styles.phraseCardHeader}>
+                  <View style={[styles.phraseBadge, !!metadataObj && styles.phraseBadgeReasoning]}>
+                    <Text style={[styles.phraseBadgeText, !!metadataObj && styles.phraseBadgeTextReasoning]}>
+                      {badgeLabel}
+                    </Text>
+                  </View>
+
+                  <View style={styles.phraseActions}>
+                    <Pressable
+                      style={styles.iconBtn}
+                      onPress={() => speakChinese(item.tw!)}
+                      hitSlop={8}
+                    >
+                      <Feather name="volume-2" size={16} color="#475569" />
+                    </Pressable>
+
+                    <Pressable
+                      style={styles.iconBtn}
+                      onPress={() => handleSaveToVocab(item)}
+                      hitSlop={8}
+                    >
+                      <Feather name="plus-circle" size={16} color="#475569" />
+                    </Pressable>
+                  </View>
                 </View>
 
-                <View style={styles.phraseActions}>
-                  <Pressable
-                    style={styles.iconBtn}
-                    onPress={() => speakChinese(item.tw!)}
-                    hitSlop={8}
-                  >
-                    <Feather name="volume-2" size={16} color="#475569" />
-                  </Pressable>
+                {/* Câu Phồn thể Đài Loan: Hỗ trợ chạm hoặc kéo từ/cụm từ để Nghe và Phân tích */}
+                <ClickableSentence
+                  sentence={item.tw!}
+                  onPressWord={(w) => {
+                    setSelectedWord(w);
+                    setSelectedSentence(item.tw || '');
+                  }}
+                  textStyle={styles.phraseTwText}
+                  highlightColor="#EEF2FF"
+                />
 
-                  <Pressable
-                    style={styles.iconBtn}
-                    onPress={() => handleSaveToVocab(item)}
-                    hitSlop={8}
-                  >
-                    <Feather name="plus-circle" size={16} color="#475569" />
-                  </Pressable>
-                </View>
+                {!!item.pinyin && item.pinyin.trim().length > 0 && <Text style={styles.phrasePinyinText}>{item.pinyin}</Text>}
+
+                {!!item.vi && item.vi.trim().length > 0 && <Text style={styles.phraseViText}>{item.vi}</Text>}
+
+                {!!item.explanation && item.explanation.trim().length > 0 && !isExplanationDuplicate && (
+                  <View style={styles.explanationBox}>
+                    <Feather name="info" size={13} color="#64748B" style={styles.explanationIcon} />
+                    <Text style={styles.explanationText}>{item.explanation}</Text>
+                  </View>
+                )}
               </View>
-
-              {/* Câu Phồn thể Đài Loan: Hỗ trợ chạm hoặc kéo từ/cụm từ để Nghe và Phân tích */}
-              <ClickableSentence
-                sentence={item.tw!}
-                onPressWord={(w) => {
-                  setSelectedWord(w);
-                  setSelectedSentence(item.tw || '');
-                }}
-                textStyle={styles.phraseTwText}
-                highlightColor="#EEF2FF"
-              />
-
-              {!!item.pinyin && item.pinyin.trim().length > 0 && <Text style={styles.phrasePinyinText}>{item.pinyin}</Text>}
-
-              {!!item.vi && item.vi.trim().length > 0 && <Text style={styles.phraseViText}>{item.vi}</Text>}
-
-              {!!item.explanation && item.explanation.trim().length > 0 && (
-                <View style={styles.explanationBox}>
-                  <Feather name="info" size={13} color="#64748B" style={styles.explanationIcon} />
-                  <Text style={styles.explanationText}>{item.explanation}</Text>
-                </View>
-              )}
-            </View>
-          )}
+            );
+          })()}
 
           {/* Nút thao tác nhanh Mở tất cả / Thu gọn chi tiết nếu có các mục phụ */}
           {hasAnyCollapsible && (
