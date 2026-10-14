@@ -19,6 +19,7 @@ import {
   AiChatSession,
   AiChatMessage,
   AiChatFeedback,
+  AiChatMetadata,
 } from '../types';
 import {
   getAiChatSessions,
@@ -57,6 +58,14 @@ export function AiChatScreen() {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedSentence, setSelectedSentence] = useState<string>('');
   const isScrollLocked = useScrollLockStore((state) => state.isScrollLocked);
+
+  // Trạng thái thu gọn/mở rộng quá trình suy luận (Thought Accordion) của Reasoning
+  const [expandedThoughts, setExpandedThoughts] = useState<Record<string, boolean>>({});
+
+  const toggleThought = (msgId: string) => {
+    Haptics.selectionAsync();
+    setExpandedThoughts((prev) => ({ ...prev, [msgId]: !prev[msgId] }));
+  };
 
   // Modal đóng góp ý kiến / sửa lỗi (Feedback)
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
@@ -262,6 +271,7 @@ export function AiChatScreen() {
         pinyin: reply.pinyin,
         vi: reply.vi,
         explanation: reply.explanation,
+        metadata: reply.metadata,
       });
 
       setMessages((prev) => [...prev, botMsg]);
@@ -377,18 +387,53 @@ export function AiChatScreen() {
       );
     }
 
+    let metadataObj: AiChatMetadata | null = null;
+    if (item.metadata) {
+      try {
+        metadataObj = JSON.parse(item.metadata);
+      } catch {}
+    }
+
     return (
       <View style={styles.botMessageRow}>
         <View style={styles.botBubble}>
           {/* Nội dung hội thoại / giải thích của bot */}
           <Text style={styles.botMessageText}>{item.content}</Text>
 
+          {/* Thanh quá trình suy luận & phản biện ngầm (Reasoning Thought Accordion) */}
+          {metadataObj?.thought_summary && (
+            <View style={styles.thoughtWrap}>
+              <Pressable
+                style={styles.thoughtHeader}
+                onPress={() => toggleThought(item.id)}
+                hitSlop={6}
+              >
+                <View style={styles.thoughtHeaderLeft}>
+                  <Feather name="cpu" size={12} color="#6366F1" />
+                  <Text style={styles.thoughtHeaderText}>Phân tích & Phản biện ngầm</Text>
+                </View>
+                <Feather
+                  name={expandedThoughts[item.id] ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color="#64748B"
+                />
+              </Pressable>
+              {expandedThoughts[item.id] && (
+                <View style={styles.thoughtBody}>
+                  <Text style={styles.thoughtBodyText}>{metadataObj.thought_summary}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Card từ vựng / câu mẫu Phồn thể Đài Loan nếu có */}
           {item.tw && (
             <View style={styles.phraseCard}>
               <View style={styles.phraseCardHeader}>
-                <View style={styles.phraseBadge}>
-                  <Text style={styles.phraseBadgeText}>Chuẩn Đài Loan</Text>
+                <View style={[styles.phraseBadge, !!metadataObj && styles.phraseBadgeReasoning]}>
+                  <Text style={[styles.phraseBadgeText, !!metadataObj && styles.phraseBadgeTextReasoning]}>
+                    {metadataObj ? 'Câu khuyên dùng (Chuẩn Đài)' : 'Chuẩn Đài Loan'}
+                  </Text>
                 </View>
 
                 <View style={styles.phraseActions}>
@@ -431,6 +476,83 @@ export function AiChatScreen() {
                   <Text style={styles.explanationText}>{item.explanation}</Text>
                 </View>
               )}
+            </View>
+          )}
+
+          {/* Biến thể theo ngữ cảnh thực tế đời thường (Reasoning Mode) */}
+          {metadataObj?.variations && metadataObj.variations.length > 0 && (
+            <View style={styles.variationsSection}>
+              <View style={styles.sectionHeaderRow}>
+                <Feather name="layers" size={13} color="#4F46E5" />
+                <Text style={styles.sectionHeaderTitle}>Biến thể theo ngữ cảnh</Text>
+              </View>
+              {metadataObj.variations.map((v, vIdx) => (
+                <View key={vIdx} style={styles.variationCard}>
+                  <View style={styles.variationHeader}>
+                    <View style={styles.variationTag}>
+                      <Text style={styles.variationTagText}>{v.tag || `Cách nói #${vIdx + 1}`}</Text>
+                    </View>
+                    <Pressable
+                      style={styles.iconBtn}
+                      onPress={() => speakChinese(v.tw)}
+                      hitSlop={8}
+                    >
+                      <Feather name="volume-2" size={14} color="#475569" />
+                    </Pressable>
+                  </View>
+                  <ClickableSentence
+                    sentence={v.tw}
+                    onPressWord={(w) => {
+                      setSelectedWord(w);
+                      setSelectedSentence(v.tw);
+                    }}
+                    textStyle={styles.variationTwText}
+                    highlightColor="#EEF2FF"
+                  />
+                  {v.pinyin && <Text style={styles.variationPinyinText}>{v.pinyin}</Text>}
+                  {v.vi && <Text style={styles.variationViText}>{v.vi}</Text>}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Từ vựng then chốt đắt giá (Reasoning Mode) */}
+          {metadataObj?.key_words && metadataObj.key_words.length > 0 && (
+            <View style={styles.keyWordsSection}>
+              <View style={styles.sectionHeaderRow}>
+                <Feather name="bookmark" size={13} color="#4F46E5" />
+                <Text style={styles.sectionHeaderTitle}>Từ vựng đắt giá nên nhớ</Text>
+              </View>
+              <View style={styles.keyWordsWrap}>
+                {metadataObj.key_words.map((kw, kwIdx) => (
+                  <Pressable
+                    key={kwIdx}
+                    style={styles.keyWordChip}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      speakChinese(kw.word);
+                      setSelectedWord(kw.word);
+                      setSelectedSentence(item.tw || kw.word);
+                    }}
+                  >
+                    <Text style={styles.keyWordChipTw}>{kw.word}</Text>
+                    <Text style={styles.keyWordChipPinyin}>({kw.pinyin})</Text>
+                    <Text style={styles.keyWordChipMeaning}>: {kw.meaning}</Text>
+                    <Feather name="volume-2" size={11} color="#6366F1" style={{ marginLeft: 4 }} />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Văn hóa ứng xử & Cảnh báo từ vựng (Reasoning Mode) */}
+          {metadataObj?.cultural_insight && (
+            <View style={styles.culturalBox}>
+              <Feather name="info" size={13} color="#4F46E5" style={styles.culturalIcon} />
+              <View style={styles.culturalContent}>
+                <Text style={styles.culturalTitle}>Văn hóa ứng xử bản xứ</Text>
+                <Text style={styles.culturalText}>{metadataObj.cultural_insight}</Text>
+              </View>
             </View>
           )}
 
@@ -1126,6 +1248,178 @@ const styles = StyleSheet.create({
   },
   explanationText: {
     flex: 1,
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
+  },
+  // ─── Reasoning Components Styling ─────────────────────────────
+  thoughtWrap: {
+    marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    overflow: 'hidden',
+  },
+  thoughtHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  thoughtHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  thoughtHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6366F1',
+    letterSpacing: 0.3,
+  },
+  thoughtBody: {
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  thoughtBodyText: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  phraseBadgeReasoning: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+    borderWidth: 1,
+  },
+  phraseBadgeTextReasoning: {
+    color: '#4F46E5',
+    fontWeight: '800',
+  },
+  variationsSection: {
+    marginTop: 12,
+    gap: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  sectionHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  variationCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  variationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  variationTag: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  variationTagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  variationTwText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  variationPinyinText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  variationViText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  keyWordsSection: {
+    marginTop: 12,
+  },
+  keyWordsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  keyWordChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  keyWordChipTw: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  keyWordChipPinyin: {
+    fontSize: 11,
+    color: '#6366F1',
+    marginLeft: 3,
+  },
+  keyWordChipMeaning: {
+    fontSize: 11,
+    color: '#475569',
+    marginLeft: 2,
+  },
+  culturalBox: {
+    marginTop: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  culturalIcon: {
+    marginTop: 2,
+  },
+  culturalContent: {
+    flex: 1,
+  },
+  culturalTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4F46E5',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  culturalText: {
     fontSize: 12,
     color: '#475569',
     lineHeight: 18,

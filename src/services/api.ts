@@ -1530,12 +1530,80 @@ export async function classifyTopicForContent(
 
 // ─── Trợ lý AI Chatbot chuyên sâu tiếng Trung Phồn thể Đài Loan ───────────────
 
+const SIMPLIFIED_TO_TRADITIONAL: Record<string, string> = {
+  '还': '還',
+  '里': '裡',
+  '裏': '裡',
+  '移动': '移動',
+  '动': '動',
+  '时': '時',
+  '后': '後',
+  '么': '麼',
+  '请': '請',
+  '问': '問',
+  '给': '給',
+  '说': '說',
+  '车': '車',
+  '站': '站',
+  '门': '門',
+  '开': '開',
+  '关': '關',
+  '帮': '幫',
+  '让': '讓',
+  '挤': '擠',
+  '过': '過',
+  '这': '這',
+  '个': '個',
+  '点': '點',
+  '边': '邊',
+  '样': '樣',
+  '对': '對',
+  '谢': '謝',
+  '会': '會',
+  '没': '沒',
+  '态': '態',
+  '度': '度',
+  '识': '識',
+  '发': '發',
+  '现': '現',
+  '线': '線',
+};
+
+/**
+ * Phễu làm sạch tiếng Trung Phồn thể Đài Loan (0ms, Local Fail-Safe):
+ * - Tự động đổi Giản thể sang Phồn thể
+ * - Tách bỏ liên từ '- 或者 -', '/', '或是' nếu model lỡ nối nhiều câu
+ * - Tẩy sạch từ tiếng Anh hoặc ghi chú tiếng Việt lọt vào câu tiếng Trung
+ */
+export function cleanChineseSentence(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+  // 1. Chuyển đổi các chữ Giản thể thường gặp sang Phồn thể Đài Loan
+  for (const [simp, trad] of Object.entries(SIMPLIFIED_TO_TRADITIONAL)) {
+    cleaned = cleaned.replaceAll(simp, trad);
+  }
+  // 2. Tách nếu có liên từ '- 或者 -' hoặc '/' hay '或是'
+  if (/[-–—]\s*或者\s*[-–—]|\/|\s+或是\s+/.test(cleaned)) {
+    const parts = cleaned.split(/[-–—]\s*或者\s*[-–—]|\/|\s+或是\s+/);
+    if (parts.length > 0 && parts[0].trim()) {
+      cleaned = parts[0].trim();
+    }
+  }
+  // 3. Loại bỏ chữ cái tiếng Anh ngẫu nhiên hoặc từ rác
+  cleaned = cleaned.replace(/\b[a-zA-Z]+\b/g, '');
+  // 4. Loại bỏ các phần chú thích tiếng Việt trong ngoặc nếu bị lọt vào câu tiếng Trung
+  cleaned = cleaned.replace(/\([a-zA-ZÀ-ỹ0-9\s/]+\)/g, '');
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  return cleaned;
+}
+
 export interface AiChatReply {
   content: string; // Nội dung hội thoại / giải thích tiếng Việt
   tw?: string; // Câu hoặc từ vựng Phồn thể chuẩn Đài Loan (nếu có)
   pinyin?: string; // Bính âm có dấu thanh
   vi?: string; // Nghĩa tiếng Việt của câu/từ
   explanation?: string; // Lưu ý ngữ pháp / văn hóa Đài súc tích
+  metadata?: string; // JSON chuỗi của AiChatMetadata (dành cho chế độ Reasoning)
 }
 
 export const AI_CHAT_RESPONSE_SCHEMA = {
@@ -1568,9 +1636,6 @@ export async function sendAiChatMessage(
   }
 
   const isReasoning = mode === 'reasoning';
-  // Flash mode: 1200 tokens súc tích, tiết kiệm quota
-  // Reasoning mode: 3000 tokens cho phép trả lời sâu, nhiều câu mẫu và biến thể đời thường
-  const maxTokens = isReasoning ? 3000 : 1200;
 
   // 1. Rolling context window: chỉ gửi tối đa 4 tin nhắn gần nhất (2 lượt hỏi-đáp)
   const trimmedHistory = (history || []).slice(-4);
@@ -1601,39 +1666,167 @@ export async function sendAiChatMessage(
       '\n';
   }
 
-  const reasoningInstruction = isReasoning
-    ? `\n4. CHẾ ĐỘ REASONING (QUY TRÌNH TỰ PHẢN BIỆN, KIỂM TRA CHÉO & SỬA LỖI TRƯỚC KHI XUẤT KẾT QUẢ):\n` +
-      `- BƯỚC 1 (SOẠN THẢO BẢN THẢO): Lên kế hoạch câu trả lời chi tiết, câu khẩu ngữ Phồn thể tương ứng và giải thích văn hóa Đài Loan.\n` +
-      `- BƯỚC 2 (TỰ PHẢN BIỆN & KIỂM TRA CHẤT LƯỢNG): Tự đối chiếu lại bản thảo so với câu hỏi của người dùng:\n` +
-      `   * Đã đúng 100% trọng tâm và ý định của người dùng chưa?\n` +
-      `   * Có từ ngữ nào bị lẫn tiếng Trung Giản thể hoặc tiếng Trung Đại Lục không? (Tuyệt đối chỉ dùng từ ngữ chuẩn Đài Loan như: 捷運, 機車, 影片, 便當, 垃圾桶, 伺服器...).\n` +
-      `   * Pinyin có dấu thanh điệu đã chính xác từng chữ chưa?\n` +
-      `   * Bổ sung thêm các cách nói đời thường tự nhiên của người bản xứ Đài Loan và lưu ý văn hóa để câu trả lời sâu sắc, đầy đủ nhất.\n` +
-      `- BƯỚC 3 (XUẤT BẢN HOÀN THIỆN): Sửa đổi hoàn thiện các điểm chưa chuẩn và xuất kết quả cuối cùng dưới dạng JSON theo schema đã cho.`
-    : `\n4. Giữ câu trả lời súc tích, đi thẳng vào trọng tâm để tiết kiệm token tối đa.`;
-
-  const systemPrompt =
-    `Bạn là Trợ lý AI chuyên gia khẩu ngữ và từ vựng tiếng Trung Phồn thể Đài Loan (Taiwanese Traditional Chinese Specialist).\n\n` +
-    `PHẠM VI HOẠT ĐỘNG DUY NHẤT:\n` +
-    `- CHỈ hỗ trợ các nội dung liên quan trực tiếp đến tiếng Trung Phồn thể Đài Loan: cách diễn đạt theo ngữ cảnh thực tế đời sống, từ vựng, ngữ pháp, bính âm (pinyin), phân biệt cách dùng từ giữa Đài Loan và Đại Lục, phát âm, và văn hóa giao tiếp Đài Loan.\n\n` +
-    `QUY TẮC BẮT BUỘC (TỐI ƯU QUOTA & BẢO VỆ PHẠM VI):\n` +
-    `1. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi KHÔNG LIÊN QUAN đến học tiếng Trung (ví dụ: lập trình, toán học, tin tức, chính trị, viết văn ngoài lề), lập tức từ chối lịch sự trong ĐÚNG 1 CÂU DƯỚI 15 TỪ vào trường "content": "Tôi là trợ lý tiếng Trung Phồn thể Đài Loan, chỉ hỗ trợ học tiếng và từ vựng." (Tuyệt đối không điền các trường tw, pinyin, vi, explanation).\n` +
-    `2. LUÔN DÙNG CHỮ PHỒN THỂ ĐÀI LOAN (繁體字), KHÔNG BAO GIỜ dùng chữ Giản thể (简体字), KHÔNG dùng từ ngữ Đại Lục (ví dụ dùng: 捷運, 機車, 計程車, 便當, 買單, 垃圾桶, 影片...).\n` +
-    `3. Khi người dùng hỏi cách nói, dịch câu, hoặc hỏi từ vựng theo tình huống: Hãy cung cấp 'tw' (câu/từ Phồn thể chuẩn Đài Loan nhất), 'pinyin' (có dấu thanh), 'vi' (nghĩa tiếng Việt tự nhiên), 'explanation' (lưu ý ngữ cảnh / văn hóa Đài súc tích), và 'content' (lời giải đáp thân thiện, súc tích).` +
-    reasoningInstruction +
-    feedbackSection;
-
-  const promptUser = `${historySection}Người dùng hỏi: "${query}"\n\nHãy trả lời bằng JSON theo schema.`;
-
   try {
-    const reply = await callGemini<AiChatReply>(
-      [{ text: promptUser }],
-      AI_CHAT_RESPONSE_SCHEMA,
-      maxTokens,
-      systemPrompt,
+    // ══════════════════════════════════════════════════════════════════════════
+    // ⚡ CHẾ ĐỘ 1: FLASH (Siêu tốc <900ms, 1 câu chuẩn duy nhất, tiết kiệm quota)
+    // ══════════════════════════════════════════════════════════════════════════
+    if (!isReasoning) {
+      const flashSystem =
+        `Bạn là Trợ lý AI chuyên gia khẩu ngữ tiếng Trung Phồn thể Đài Loan (Taiwanese Traditional Chinese Specialist).\n\n` +
+        `PHẠM VI HOẠT ĐỘNG DUY NHẤT:\n` +
+        `- CHỈ hỗ trợ tiếng Trung Phồn thể Đài Loan: cách diễn đạt đời sống, từ vựng, ngữ pháp, bính âm pinyin, phân biệt cách dùng từ Đài Loan vs Đại Lục.\n\n` +
+        `QUY TẮC BẮT BUỘC:\n` +
+        `1. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi KHÔNG LIÊN QUAN đến học tiếng Trung, lập tức từ chối lịch sự trong ĐÚNG 1 CÂU DƯỚI 15 TỪ vào trường "content": "Tôi là trợ lý tiếng Trung Phồn thể Đài Loan, chỉ hỗ trợ học tiếng và từ vựng." (Không điền các trường tw, pinyin, vi, explanation).\n` +
+        `2. LUÔN DÙNG CHỮ PHỒN THỂ ĐÀI LOAN (繁體字), KHÔNG BAO GIỜ dùng chữ Giản thể (简体字), KHÔNG dùng từ ngữ Đại Lục (ví dụ dùng: 捷運, 機車, 計程車, 便當, 買單, 垃圾桶, 影片...).\n` +
+        `3. CÂU MẪU CHUẨN XÁC: Cung cấp ĐÚNG 1 CÂU PHỒN THỂ DUY NHẤT vào 'tw' (CẤM chữ Giản thể, CẤM chữ Latinh/tiếng Việt, CẤM '- 或者 -'). Điền đầy đủ 'pinyin' có dấu, 'vi' (nghĩa tiếng Việt sạch), 'explanation' (lưu ý văn hóa ngắn gọn) và 'content' (lời giải đáp thân thiện).` +
+        feedbackSection;
+
+      const reply = await callGemini<AiChatReply>(
+        [{ text: `${historySection}Người dùng hỏi: "${query}"\n\nHãy trả lời bằng JSON theo schema.` }],
+        AI_CHAT_RESPONSE_SCHEMA,
+        1200,
+        flashSystem,
+        AI_CHAT_MODELS
+      );
+
+      if (reply.tw) {
+        reply.tw = cleanChineseSentence(reply.tw);
+      }
+      return reply;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 🧠 CHẾ ĐỘ 2: REASONING (Quy trình thẩm định 2 lượt ngầm + Phễu lọc Sanitizer)
+    // ══════════════════════════════════════════════════════════════════════════
+    // LƯỢT 1: Deep Scenario Brainstorming (AI tự do phân tích tâm lý, ngữ cảnh, từ vựng bản xứ)
+    const pass1System =
+      `Bạn là Chuyên gia ngôn ngữ & Chiến lược giao tiếp thực chiến Đài Loan (Taiwanese Local Cultural & Linguistic Coach).\n\n` +
+      `Nhiệm vụ của bạn là phân tích sâu sắc câu hỏi tình huống của người dùng để xây dựng chiến lược giao tiếp chuẩn bản xứ:\n` +
+      `1. PHÂN TÍCH TÂM LÝ & NGỮ CẢNH THỰC TẾ: Bối cảnh đời thường tại Đài Loan diễn ra thế nào? Đối phương có tâm lý gì? Cần mở lời thế nào để lịch sự và đạt hiệu quả cao nhất (ví dụ thói quen dùng 不好意思, 請問, 謝謝)?\n` +
+      `2. 3 PHƯƠNG ÁN NÓI THEO SẮC THÁI:\n` +
+      `   - Phương án 1 (Khuyên dùng nhất / Lịch sự nhất)\n` +
+      `   - Phương án 2 (Ngắn gọn / Tự lách qua hoặc tự xử lý đời thường)\n` +
+      `   - Phương án 3 (Khi cần dứt khoát hoặc rõ ràng hơn)\n` +
+      `3. TỪ VỰNG ĐẮT GIÁ: 2-3 từ khẩu ngữ đắt giá của người Đài (kèm bính âm pinyin có dấu và nghĩa tiếng Việt). Cảnh báo từ Giản thể hoặc từ Đại Lục cần TUYỆT ĐỐI TRÁNH.\n` +
+      `4. LƯU Ý VĂN HÓA ỨNG XỬ: Ghi chú văn hóa súc tích giúp người dùng tự tin.` +
+      feedbackSection;
+
+    let pass1Notes = '';
+    try {
+      const p1Res = await callGemini<{ analysis: string } | string>(
+        [{ text: `${historySection}TÌNH HUỐNG NGƯỜI DÙNG HỎI: "${query}"\n\nHãy phân tích chuyên sâu các khía cạnh trên.` }],
+        { type: 'OBJECT', properties: { analysis: { type: 'STRING' } }, required: ['analysis'] },
+        1500,
+        pass1System,
+        AI_CHAT_MODELS
+      );
+      pass1Notes = typeof p1Res === 'string' ? p1Res : (p1Res as any)?.analysis || '';
+    } catch (p1Err) {
+      console.warn('[Reasoning] Pass 1 notice:', p1Err);
+    }
+
+    // LƯỢT 2: Strict Quality Auditor & Multi-Tier Clean JSON Extraction Pass
+    const pass2System =
+      `Bạn là Trưởng ban Kiểm định Chất lượng Tiếng Trung Đài Loan (Taiwanese Traditional Chinese Quality Auditor).\n\n` +
+      `Nhiệm vụ của bạn là thẩm định bản phân tích chuyên sâu của chuyên gia và đóng gói thành JSON hoàn hảo theo schema.\n\n` +
+      `QUY TẮC THẨM ĐỊNH BẮT BUỘC (CRITICAL QUALITY RULES):\n` +
+      `1. NGÔN NGỮ CỦA TỪNG TRƯỜNG:\n` +
+      `   - 'content', 'thought_summary', 'vi', 'explanation', 'cultural_insight', và 'tag' BẮT BUỘC VIẾT BẰNG TIẾNG VIỆT tự nhiên, thân thiện.\n` +
+      `   - 'tw' và 'word' BẮT BUỘC LÀ 100% CHỮ HÁN PHỒN THỂ ĐÀI LOAN (繁體字).\n` +
+      `2. 100% CHỮ HÁN PHỒN THỂ ĐÀI LOAN: Mọi câu tiếng Trung trong 'primary_phrase' và 'variations' BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan. TUYỆT ĐỐI CẤM chữ Giản thể (phải dùng 還 thay 还, 裡 thay 里, 移動 thay 移动, 挪 thay 挪, 車 thay 车, 門 thay 门).\n` +
+      `3. TUYỆT ĐỐI CẤM TIẾNG ANH & TIẾNG VIỆT TRONG CÂU TIẾNG TRUNG: Các trường 'tw' chỉ chứa thuần túy chữ Hán và dấu câu tiếng Trung (，、？！). TUYỆT ĐỐI CẤM từ tiếng Anh (như spaces, bus, ok), CẤM từ tiếng Việt (như Bổ sung, chỗ đứng), CẤM dấu gạch nối '- 或者 -' hay '/'. Mỗi mục là ĐÚNG 1 CÂU DUY NHẤT!\n` +
+      `4. PINYIN BẮT BUỘC ĐẦY ĐỦ: BẮT BUỘC phải có trường 'pinyin' với đầy đủ dấu thanh điệu, khớp chính xác từng chữ Hán.\n` +
+      `5. TIẾNG VIỆT RÕ RÀNG: Trường 'vi' CHỈ LÀ câu dịch tiếng Việt sạch sẽ. Mọi giải thích phải đưa vào 'explanation' hoặc 'cultural_insight'.\n` +
+      `6. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi không liên quan đến học tiếng Trung, chỉ điền lời từ chối lịch sự vào 'content' và để trống các trường tiếng Trung.`;
+
+    const pass2Schema = {
+      type: 'OBJECT',
+      properties: {
+        content: { type: 'STRING' },
+        thought_summary: { type: 'STRING' },
+        primary_phrase: {
+          type: 'OBJECT',
+          properties: {
+            tw: { type: 'STRING' },
+            pinyin: { type: 'STRING' },
+            vi: { type: 'STRING' },
+            explanation: { type: 'STRING' },
+          },
+          required: ['tw', 'pinyin', 'vi', 'explanation'],
+        },
+        variations: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              tw: { type: 'STRING' },
+              pinyin: { type: 'STRING' },
+              vi: { type: 'STRING' },
+              tag: { type: 'STRING' },
+            },
+            required: ['tw', 'pinyin', 'vi', 'tag'],
+          },
+        },
+        key_words: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              word: { type: 'STRING' },
+              pinyin: { type: 'STRING' },
+              meaning: { type: 'STRING' },
+            },
+            required: ['word', 'pinyin', 'meaning'],
+          },
+        },
+        cultural_insight: { type: 'STRING' },
+      },
+      required: ['content', 'thought_summary', 'primary_phrase', 'variations', 'key_words', 'cultural_insight'],
+    };
+
+    const pass2Prompt =
+      `CÂU HỎI CỦA NGƯỜI DÙNG: "${query}"\n\n` +
+      (pass1Notes ? `BẢN PHÂN TÍCH CHUYÊN SÂU:\n${pass1Notes}\n\n` : '') +
+      `Hãy thẩm định và đóng gói thành JSON hoàn hảo theo schema. Viết toàn bộ phần giải thích, dịch nghĩa và nhận xét bằng tiếng Việt.`;
+
+    const parsed = await callGemini<any>(
+      [{ text: pass2Prompt }],
+      pass2Schema,
+      2500,
+      pass2System,
       AI_CHAT_MODELS
     );
-    return reply;
+
+    // LƯỢT 3: Phễu lọc an toàn bằng Code (Programmatic Sanitizer - 0ms)
+    const primaryTw = cleanChineseSentence(parsed?.primary_phrase?.tw || '');
+    const variations = (parsed?.variations || []).map((v: any) => ({
+      tw: cleanChineseSentence(v.tw || ''),
+      pinyin: (v.pinyin || '').trim(),
+      vi: (v.vi || '').trim(),
+      tag: (v.tag || '').trim(),
+    })).filter((v: any) => !!v.tw);
+
+    const keyWords = (parsed?.key_words || []).map((k: any) => ({
+      word: cleanChineseSentence(k.word || ''),
+      pinyin: (k.pinyin || '').trim(),
+      meaning: (k.meaning || '').trim(),
+    })).filter((k: any) => !!k.word);
+
+    const metadata = JSON.stringify({
+      thought_summary: parsed?.thought_summary || '',
+      variations,
+      key_words: keyWords,
+      cultural_insight: parsed?.cultural_insight || '',
+    });
+
+    return {
+      content: parsed?.content || '',
+      tw: primaryTw,
+      pinyin: (parsed?.primary_phrase?.pinyin || '').trim(),
+      vi: (parsed?.primary_phrase?.vi || '').trim(),
+      explanation: (parsed?.primary_phrase?.explanation || '').trim(),
+      metadata,
+    };
   } catch (err: any) {
     console.error('sendAiChatMessage error:', err);
     throw new Error(`Trợ lý AI chưa thể phản hồi: ${err.message || 'Lỗi kết nối'}`);

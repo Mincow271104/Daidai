@@ -233,6 +233,26 @@ export interface AiChatSession {
   updated_at: number;
 }
 
+export interface AiChatVariation {
+  tw: string;
+  pinyin: string;
+  vi: string;
+  tag: string;
+}
+
+export interface AiChatKeyWord {
+  word: string;
+  pinyin: string;
+  meaning: string;
+}
+
+export interface AiChatMetadata {
+  thought_summary?: string;
+  variations?: AiChatVariation[];
+  key_words?: AiChatKeyWord[];
+  cultural_insight?: string;
+}
+
 export interface AiChatMessage {
   id: string;
   session_id: string;
@@ -242,6 +262,7 @@ export interface AiChatMessage {
   pinyin?: string;
   vi?: string;
   explanation?: string;
+  metadata?: string; // JSON string của AiChatMetadata (dành cho chế độ Reasoning)
   created_at: number;
   feedback?: number; // 0 = none, 1 = thumbs up, -1 = thumbs down
   feedback_note?: string;

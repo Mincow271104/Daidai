@@ -1517,8 +1517,8 @@ export async function insertAiChatMessage(
   const id = uuidv4();
   const now = Date.now();
   await db.runAsync(
-    `INSERT INTO ai_chat_messages (id, session_id, role, content, tw, pinyin, vi, explanation, created_at, feedback, feedback_note)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO ai_chat_messages (id, session_id, role, content, tw, pinyin, vi, explanation, metadata, created_at, feedback, feedback_note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       msg.session_id,
@@ -1528,6 +1528,7 @@ export async function insertAiChatMessage(
       msg.pinyin ?? null,
       msg.vi ?? null,
       msg.explanation ?? null,
+      msg.metadata ?? null,
       now,
       msg.feedback ?? 0,
       msg.feedback_note ?? null,

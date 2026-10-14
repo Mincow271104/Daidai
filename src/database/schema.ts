@@ -169,6 +169,7 @@ async function doInitDatabase(): Promise<void> {
       pinyin TEXT,
       vi TEXT,
       explanation TEXT,
+      metadata TEXT,
       created_at INTEGER NOT NULL,
       feedback INTEGER DEFAULT 0,
       feedback_note TEXT,
@@ -284,7 +285,7 @@ async function doInitDatabase(): Promise<void> {
     console.warn('Migration user_topics error:', err);
   }
 
-  // Migration cột tw cho ai_chat_messages nếu DB đã tạo từ trước
+  // Migration cột tw và metadata cho ai_chat_messages nếu DB đã tạo từ trước
   try {
     const chatTableInfo = await database.getAllAsync<{ name: string }>(
       `PRAGMA table_info(ai_chat_messages);`
@@ -292,6 +293,9 @@ async function doInitDatabase(): Promise<void> {
     const existingChatCols = new Set(chatTableInfo.map((col) => col.name));
     if (!existingChatCols.has('tw')) {
       await database.runAsync(`ALTER TABLE ai_chat_messages ADD COLUMN tw TEXT;`);
+    }
+    if (!existingChatCols.has('metadata')) {
+      await database.runAsync(`ALTER TABLE ai_chat_messages ADD COLUMN metadata TEXT;`);
     }
   } catch (err) {
     console.warn('Migration ai_chat_messages error:', err);
