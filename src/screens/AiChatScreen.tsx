@@ -59,12 +59,39 @@ export function AiChatScreen() {
   const [selectedSentence, setSelectedSentence] = useState<string>('');
   const isScrollLocked = useScrollLockStore((state) => state.isScrollLocked);
 
-  // Trạng thái thu gọn/mở rộng quá trình suy luận (Thought Accordion) của Reasoning
-  const [expandedThoughts, setExpandedThoughts] = useState<Record<string, boolean>>({});
+  // Trạng thái thu gọn/mở rộng các mục của Reasoning (thought, variations, vocab, culture)
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, { thought?: boolean; variations?: boolean; vocab?: boolean; culture?: boolean }>
+  >({});
 
-  const toggleThought = (msgId: string) => {
+  const toggleSection = (
+    msgId: string,
+    section: 'thought' | 'variations' | 'vocab' | 'culture'
+  ) => {
     Haptics.selectionAsync();
-    setExpandedThoughts((prev) => ({ ...prev, [msgId]: !prev[msgId] }));
+    setExpandedSections((prev) => {
+      const current = prev[msgId] || {};
+      return {
+        ...prev,
+        [msgId]: {
+          ...current,
+          [section]: !current[section],
+        },
+      };
+    });
+  };
+
+  const toggleAllSections = (msgId: string, expand: boolean) => {
+    Haptics.selectionAsync();
+    setExpandedSections((prev) => ({
+      ...prev,
+      [msgId]: {
+        thought: expand,
+        variations: expand,
+        vocab: expand,
+        culture: expand,
+      },
+    }));
   };
 
   // Modal đóng góp ý kiến / sửa lỗi (Feedback)
@@ -394,6 +421,21 @@ export function AiChatScreen() {
       } catch {}
     }
 
+    const msgSections = expandedSections[item.id] || {};
+    const isThoughtExpanded = !!msgSections.thought;
+    const isVariationsExpanded = !!msgSections.variations;
+    const isVocabExpanded = !!msgSections.vocab;
+    const isCultureExpanded = !!msgSections.culture;
+
+    const hasVariations = !!metadataObj?.variations && metadataObj.variations.length > 0;
+    const hasVocab = !!metadataObj?.key_words && metadataObj.key_words.length > 0;
+    const hasCulture = !!metadataObj?.cultural_insight;
+    const hasAnyCollapsible = hasVariations || hasVocab || hasCulture;
+    const isAllExpanded =
+      (!hasVariations || isVariationsExpanded) &&
+      (!hasVocab || isVocabExpanded) &&
+      (!hasCulture || isCultureExpanded);
+
     return (
       <View style={styles.botMessageRow}>
         <View style={styles.botBubble}>
@@ -405,7 +447,7 @@ export function AiChatScreen() {
             <View style={styles.thoughtWrap}>
               <Pressable
                 style={styles.thoughtHeader}
-                onPress={() => toggleThought(item.id)}
+                onPress={() => toggleSection(item.id, 'thought')}
                 hitSlop={6}
               >
                 <View style={styles.thoughtHeaderLeft}>
@@ -413,12 +455,12 @@ export function AiChatScreen() {
                   <Text style={styles.thoughtHeaderText}>Phân tích & Phản biện ngầm</Text>
                 </View>
                 <Feather
-                  name={expandedThoughts[item.id] ? 'chevron-up' : 'chevron-down'}
+                  name={isThoughtExpanded ? 'chevron-up' : 'chevron-down'}
                   size={14}
                   color="#64748B"
                 />
               </Pressable>
-              {expandedThoughts[item.id] && (
+              {isThoughtExpanded && (
                 <View style={styles.thoughtBody}>
                   <Text style={styles.thoughtBodyText}>{metadataObj.thought_summary}</Text>
                 </View>
@@ -479,80 +521,155 @@ export function AiChatScreen() {
             </View>
           )}
 
-          {/* Biến thể theo ngữ cảnh thực tế đời thường (Reasoning Mode) */}
-          {metadataObj?.variations && metadataObj.variations.length > 0 && (
-            <View style={styles.variationsSection}>
-              <View style={styles.sectionHeaderRow}>
-                <Feather name="layers" size={13} color="#4F46E5" />
-                <Text style={styles.sectionHeaderTitle}>Biến thể theo ngữ cảnh</Text>
-              </View>
-              {metadataObj.variations.map((v, vIdx) => (
-                <View key={vIdx} style={styles.variationCard}>
-                  <View style={styles.variationHeader}>
-                    <View style={styles.variationTag}>
-                      <Text style={styles.variationTagText}>{v.tag || `Cách nói #${vIdx + 1}`}</Text>
-                    </View>
-                    <Pressable
-                      style={styles.iconBtn}
-                      onPress={() => speakChinese(v.tw)}
-                      hitSlop={8}
-                    >
-                      <Feather name="volume-2" size={14} color="#475569" />
-                    </Pressable>
+          {/* Nút thao tác nhanh Mở tất cả / Thu gọn chi tiết nếu có các mục phụ */}
+          {hasAnyCollapsible && (
+            <View style={styles.toggleAllRow}>
+              <Pressable
+                style={styles.toggleAllBtn}
+                onPress={() => toggleAllSections(item.id, !isAllExpanded)}
+                hitSlop={6}
+              >
+                <Feather
+                  name={isAllExpanded ? 'minimize-2' : 'maximize-2'}
+                  size={11}
+                  color="#6366F1"
+                />
+                <Text style={styles.toggleAllText}>
+                  {isAllExpanded ? 'Thu gọn chi tiết' : 'Mở rộng chi tiết'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Biến thể theo ngữ cảnh thực tế đời thường (Reasoning Mode - Accordion) */}
+          {hasVariations && (
+            <View style={styles.accordionWrap}>
+              <Pressable
+                style={styles.accordionHeader}
+                onPress={() => toggleSection(item.id, 'variations')}
+                hitSlop={6}
+              >
+                <View style={styles.accordionHeaderLeft}>
+                  <Feather name="layers" size={13} color="#4F46E5" />
+                  <Text style={styles.accordionHeaderText}>Biến thể theo ngữ cảnh</Text>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{metadataObj!.variations!.length}</Text>
                   </View>
-                  <ClickableSentence
-                    sentence={v.tw}
-                    onPressWord={(w) => {
-                      setSelectedWord(w);
-                      setSelectedSentence(v.tw);
-                    }}
-                    textStyle={styles.variationTwText}
-                    highlightColor="#EEF2FF"
-                  />
-                  {v.pinyin && <Text style={styles.variationPinyinText}>{v.pinyin}</Text>}
-                  {v.vi && <Text style={styles.variationViText}>{v.vi}</Text>}
                 </View>
-              ))}
+                <Feather
+                  name={isVariationsExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color="#64748B"
+                />
+              </Pressable>
+              {isVariationsExpanded && (
+                <View style={styles.accordionBody}>
+                  {metadataObj!.variations!.map((v, vIdx) => (
+                    <View key={vIdx} style={styles.variationCard}>
+                      <View style={styles.variationHeader}>
+                        <View style={styles.variationTag}>
+                          <Text style={styles.variationTagText}>{v.tag || `Cách nói #${vIdx + 1}`}</Text>
+                        </View>
+                        <Pressable
+                          style={styles.iconBtn}
+                          onPress={() => speakChinese(v.tw)}
+                          hitSlop={8}
+                        >
+                          <Feather name="volume-2" size={14} color="#475569" />
+                        </Pressable>
+                      </View>
+                      <ClickableSentence
+                        sentence={v.tw}
+                        onPressWord={(w) => {
+                          setSelectedWord(w);
+                          setSelectedSentence(v.tw);
+                        }}
+                        textStyle={styles.variationTwText}
+                        highlightColor="#EEF2FF"
+                      />
+                      {v.pinyin && <Text style={styles.variationPinyinText}>{v.pinyin}</Text>}
+                      {v.vi && <Text style={styles.variationViText}>{v.vi}</Text>}
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           )}
 
-          {/* Từ vựng then chốt đắt giá (Reasoning Mode) */}
-          {metadataObj?.key_words && metadataObj.key_words.length > 0 && (
-            <View style={styles.keyWordsSection}>
-              <View style={styles.sectionHeaderRow}>
-                <Feather name="bookmark" size={13} color="#4F46E5" />
-                <Text style={styles.sectionHeaderTitle}>Từ vựng đắt giá nên nhớ</Text>
-              </View>
-              <View style={styles.keyWordsWrap}>
-                {metadataObj.key_words.map((kw, kwIdx) => (
-                  <Pressable
-                    key={kwIdx}
-                    style={styles.keyWordChip}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      speakChinese(kw.word);
-                      setSelectedWord(kw.word);
-                      setSelectedSentence(item.tw || kw.word);
-                    }}
-                  >
-                    <Text style={styles.keyWordChipTw}>{kw.word}</Text>
-                    <Text style={styles.keyWordChipPinyin}>({kw.pinyin})</Text>
-                    <Text style={styles.keyWordChipMeaning}>: {kw.meaning}</Text>
-                    <Feather name="volume-2" size={11} color="#6366F1" style={{ marginLeft: 4 }} />
-                  </Pressable>
-                ))}
-              </View>
+          {/* Từ vựng then chốt đắt giá (Reasoning Mode - Accordion & Tránh tràn viền ngang) */}
+          {hasVocab && (
+            <View style={styles.accordionWrap}>
+              <Pressable
+                style={styles.accordionHeader}
+                onPress={() => toggleSection(item.id, 'vocab')}
+                hitSlop={6}
+              >
+                <View style={styles.accordionHeaderLeft}>
+                  <Feather name="bookmark" size={13} color="#4F46E5" />
+                  <Text style={styles.accordionHeaderText}>Từ vựng đắt giá nên nhớ</Text>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{metadataObj!.key_words!.length}</Text>
+                  </View>
+                </View>
+                <Feather
+                  name={isVocabExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color="#64748B"
+                />
+              </Pressable>
+              {isVocabExpanded && (
+                <View style={styles.accordionBody}>
+                  {metadataObj!.key_words!.map((kw, kwIdx) => (
+                    <Pressable
+                      key={kwIdx}
+                      style={styles.keyWordCard}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        speakChinese(kw.word);
+                        setSelectedWord(kw.word);
+                        setSelectedSentence(item.tw || kw.word);
+                      }}
+                    >
+                      <View style={styles.keyWordCardLeft}>
+                        <View style={styles.keyWordCardTitleRow}>
+                          <Text style={styles.keyWordCardTw}>{kw.word}</Text>
+                          <Text style={styles.keyWordCardPinyin}>({kw.pinyin})</Text>
+                        </View>
+                        <Text style={styles.keyWordCardMeaning}>{kw.meaning}</Text>
+                      </View>
+                      <View style={styles.keyWordAudioBtn}>
+                        <Feather name="volume-2" size={13} color="#6366F1" />
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
           )}
 
-          {/* Văn hóa ứng xử & Cảnh báo từ vựng (Reasoning Mode) */}
-          {metadataObj?.cultural_insight && (
-            <View style={styles.culturalBox}>
-              <Feather name="info" size={13} color="#4F46E5" style={styles.culturalIcon} />
-              <View style={styles.culturalContent}>
-                <Text style={styles.culturalTitle}>Văn hóa ứng xử bản xứ</Text>
-                <Text style={styles.culturalText}>{metadataObj.cultural_insight}</Text>
-              </View>
+          {/* Văn hóa ứng xử & Cảnh báo từ vựng (Reasoning Mode - Accordion) */}
+          {hasCulture && (
+            <View style={styles.accordionWrap}>
+              <Pressable
+                style={styles.accordionHeader}
+                onPress={() => toggleSection(item.id, 'culture')}
+                hitSlop={6}
+              >
+                <View style={styles.accordionHeaderLeft}>
+                  <Feather name="info" size={13} color="#4F46E5" />
+                  <Text style={styles.accordionHeaderText}>Lưu ý văn hóa ứng xử bản xứ</Text>
+                </View>
+                <Feather
+                  name={isCultureExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color="#64748B"
+                />
+              </Pressable>
+              {isCultureExpanded && (
+                <View style={styles.accordionBody}>
+                  <Text style={styles.culturalText}>{metadataObj!.cultural_insight}</Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -982,14 +1099,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
     backgroundColor: '#FFFFFF',
   },
   modeBar: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingTop: 4,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     alignItems: 'center',
@@ -1173,6 +1289,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
+    overflow: 'hidden',
   },
   botMessageText: {
     fontSize: 14,
@@ -1300,22 +1417,73 @@ const styles = StyleSheet.create({
     color: '#4F46E5',
     fontWeight: '800',
   },
-  variationsSection: {
-    marginTop: 12,
-    gap: 8,
+  // ─── Collapsible Accordion Styling ────────────────────────────
+  accordionWrap: {
+    marginTop: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
   },
-  sectionHeaderRow: {
+  accordionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    backgroundColor: '#F8FAFC',
+  },
+  accordionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    flex: 1,
+  },
+  accordionHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  countBadge: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  countBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  accordionBody: {
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    gap: 8,
+  },
+  toggleAllRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 8,
     marginBottom: 2,
   },
-  sectionHeaderTitle: {
+  toggleAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 6,
+  },
+  toggleAllText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#6366F1',
+    fontWeight: '600',
   },
   variationCard: {
     backgroundColor: '#F8FAFC',
@@ -1360,64 +1528,49 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
-  keyWordsSection: {
-    marginTop: 12,
-  },
-  keyWordsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
-  },
-  keyWordChip: {
+  keyWordCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
     borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    width: '100%',
   },
-  keyWordChipTw: {
-    fontSize: 12,
+  keyWordCardLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  keyWordCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  keyWordCardTw: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
   },
-  keyWordChipPinyin: {
-    fontSize: 11,
+  keyWordCardPinyin: {
+    fontSize: 12,
     color: '#6366F1',
-    marginLeft: 3,
+    fontWeight: '500',
   },
-  keyWordChipMeaning: {
-    fontSize: 11,
+  keyWordCardMeaning: {
+    fontSize: 12,
     color: '#475569',
-    marginLeft: 2,
+    lineHeight: 17,
   },
-  culturalBox: {
-    marginTop: 10,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 10,
+  keyWordAudioBtn: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  culturalIcon: {
-    marginTop: 2,
-  },
-  culturalContent: {
-    flex: 1,
-  },
-  culturalTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#4F46E5',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
   },
   culturalText: {
     fontSize: 12,
