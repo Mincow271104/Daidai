@@ -427,9 +427,11 @@ export function AiChatScreen() {
     const isVocabExpanded = !!msgSections.vocab;
     const isCultureExpanded = !!msgSections.culture;
 
-    const hasVariations = !!metadataObj?.variations && metadataObj.variations.length > 0;
-    const hasVocab = !!metadataObj?.key_words && metadataObj.key_words.length > 0;
-    const hasCulture = !!metadataObj?.cultural_insight;
+    const hasVariations = !!metadataObj?.variations && Array.isArray(metadataObj.variations) && metadataObj.variations.length > 0;
+    const hasVocab = !!metadataObj?.key_words && Array.isArray(metadataObj.key_words) && metadataObj.key_words.length > 0;
+    const hasCulture = !!metadataObj?.cultural_insight && typeof metadataObj.cultural_insight === 'string' && metadataObj.cultural_insight.trim().length > 0;
+    const hasThought = !!metadataObj?.thought_summary && typeof metadataObj.thought_summary === 'string' && metadataObj.thought_summary.trim().length > 0;
+    const hasTw = !!item.tw && item.tw.trim().length > 0;
     const hasAnyCollapsible = hasVariations || hasVocab || hasCulture;
     const isAllExpanded =
       (!hasVariations || isVariationsExpanded) &&
@@ -443,7 +445,7 @@ export function AiChatScreen() {
           <Text style={styles.botMessageText}>{item.content}</Text>
 
           {/* Thanh quá trình suy luận & phản biện ngầm (Reasoning Thought Accordion) */}
-          {metadataObj?.thought_summary && (
+          {hasThought && (
             <View style={styles.thoughtWrap}>
               <Pressable
                 style={styles.thoughtHeader}
@@ -462,14 +464,14 @@ export function AiChatScreen() {
               </Pressable>
               {isThoughtExpanded && (
                 <View style={styles.thoughtBody}>
-                  <Text style={styles.thoughtBodyText}>{metadataObj.thought_summary}</Text>
+                  <Text style={styles.thoughtBodyText}>{metadataObj!.thought_summary}</Text>
                 </View>
               )}
             </View>
           )}
 
           {/* Card từ vựng / câu mẫu Phồn thể Đài Loan nếu có */}
-          {item.tw && (
+          {hasTw && (
             <View style={styles.phraseCard}>
               <View style={styles.phraseCardHeader}>
                 <View style={[styles.phraseBadge, !!metadataObj && styles.phraseBadgeReasoning]}>
@@ -499,7 +501,7 @@ export function AiChatScreen() {
 
               {/* Câu Phồn thể Đài Loan: Hỗ trợ chạm hoặc kéo từ/cụm từ để Nghe và Phân tích */}
               <ClickableSentence
-                sentence={item.tw}
+                sentence={item.tw!}
                 onPressWord={(w) => {
                   setSelectedWord(w);
                   setSelectedSentence(item.tw || '');
@@ -508,11 +510,11 @@ export function AiChatScreen() {
                 highlightColor="#EEF2FF"
               />
 
-              {item.pinyin && <Text style={styles.phrasePinyinText}>{item.pinyin}</Text>}
+              {!!item.pinyin && item.pinyin.trim().length > 0 && <Text style={styles.phrasePinyinText}>{item.pinyin}</Text>}
 
-              {item.vi && <Text style={styles.phraseViText}>{item.vi}</Text>}
+              {!!item.vi && item.vi.trim().length > 0 && <Text style={styles.phraseViText}>{item.vi}</Text>}
 
-              {item.explanation && (
+              {!!item.explanation && item.explanation.trim().length > 0 && (
                 <View style={styles.explanationBox}>
                   <Feather name="info" size={13} color="#64748B" style={styles.explanationIcon} />
                   <Text style={styles.explanationText}>{item.explanation}</Text>
@@ -587,8 +589,8 @@ export function AiChatScreen() {
                         textStyle={styles.variationTwText}
                         highlightColor="#EEF2FF"
                       />
-                      {v.pinyin && <Text style={styles.variationPinyinText}>{v.pinyin}</Text>}
-                      {v.vi && <Text style={styles.variationViText}>{v.vi}</Text>}
+                      {!!v.pinyin && v.pinyin.trim().length > 0 && <Text style={styles.variationPinyinText}>{v.pinyin}</Text>}
+                      {!!v.vi && v.vi.trim().length > 0 && <Text style={styles.variationViText}>{v.vi}</Text>}
                     </View>
                   ))}
                 </View>

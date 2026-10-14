@@ -550,19 +550,34 @@ function cleanAndParseJson<T>(raw: string): T {
   }
 }
 
+export interface GeminiCallOptions {
+  overrideModels?: string[];
+  thinkingLevel?: 'minimal' | 'medium' | 'high';
+}
+
 // ─── Lõi gọi Gemini: Tự động đổi key & model khi lỗi hoặc hết quota ──────────
 async function callGemini<T>(
   parts: any[],
   schema: object,
   maxTokens: number,
   customSystem?: string,
-  overrideModels?: string[]
+  options?: GeminiCallOptions | string[]
 ): Promise<T> {
   const keys = getGeminiKeys();
   if (keys.length === 0) {
     throw new Error(
       'Bạn chưa thêm Gemini API Key. Vui lòng bấm biểu tượng Cài đặt (⚙️) ở góc trên để thêm API Key miễn phí nhé!'
     );
+  }
+
+  // Chuẩn hóa options
+  let overrideModels: string[] | undefined;
+  let thinkingLevel: 'minimal' | 'medium' | 'high' | undefined;
+  if (Array.isArray(options)) {
+    overrideModels = options;
+  } else if (options && typeof options === 'object') {
+    overrideModels = options.overrideModels;
+    thinkingLevel = options.thinkingLevel;
   }
 
   // Chuẩn hóa parts: nếu có inline_data (snake_case) thì đổi thành inlineData (camelCase)
@@ -601,6 +616,12 @@ async function callGemini<T>(
         maxOutputTokens: maxTokens > 0 ? Math.max(1024, maxTokens) : 2048,
       };
 
+      if (thinkingLevel) {
+        generationConfig.thinkingConfig = {
+          thinkingLevel,
+        };
+      }
+
       try {
         const controller = new AbortController();
         // Tăng timeout lên 14s để phù hợp với đường truyền mạng di động
@@ -625,6 +646,37 @@ async function callGemini<T>(
         if (!res.ok) {
           const body = await res.text();
           lastError = `${model} (${res.status}): ${body.slice(0, 150)}`;
+
+          // Nếu lỗi 400 do model dự phòng không hỗ trợ thinkingConfig/thinkingLevel, thử lại riêng không có thinking
+          if (res.status === 400 && thinkingLevel && (body.includes('thinkingConfig') || body.includes('thinkingLevel') || body.includes('Unknown field'))) {
+            console.warn(`[Gemini] Model ${model} không hỗ trợ thinkingLevel="${thinkingLevel}". Tự động thử lại không kèm thinkingConfig...`);
+            const retryRes = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal,
+              body: JSON.stringify({
+                system_instruction: { parts: [{ text: customSystem ?? SYSTEM_INSTRUCTION }] },
+                contents: [{ role: 'user', parts: normalizedParts }],
+                generationConfig: {
+                  ...generationConfig,
+                  thinkingConfig: undefined,
+                },
+              }),
+            });
+            if (retryRes.ok) {
+              const retryData: any = await retryRes.json();
+              const retryRaw = retryData?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (retryRaw) {
+                const parsed = cleanAndParseJson<T>(retryRaw);
+                if (i > 0) {
+                  activeModels.splice(i, 1);
+                  activeModels.unshift(model);
+                }
+                keySucceeded = true;
+                return parsed;
+              }
+            }
+          }
 
           if (res.status === 429) {
             hadQuotaExceeded = true;
@@ -1668,17 +1720,19 @@ export async function sendAiChatMessage(
 
   try {
     // ══════════════════════════════════════════════════════════════════════════
-    // ⚡ CHẾ ĐỘ 1: FLASH (Siêu tốc <900ms, 1 câu chuẩn duy nhất, tiết kiệm quota)
+    // ⚡ CHẾ ĐỘ 1: FLASH (Siêu tốc, task-focused, thinkingLevel: 'minimal')
     // ══════════════════════════════════════════════════════════════════════════
     if (!isReasoning) {
       const flashSystem =
         `Bạn là Trợ lý AI chuyên gia khẩu ngữ tiếng Trung Phồn thể Đài Loan (Taiwanese Traditional Chinese Specialist).\n\n` +
-        `PHẠM VI HOẠT ĐỘNG DUY NHẤT:\n` +
-        `- CHỈ hỗ trợ tiếng Trung Phồn thể Đài Loan: cách diễn đạt đời sống, từ vựng, ngữ pháp, bính âm pinyin, phân biệt cách dùng từ Đài Loan vs Đại Lục.\n\n` +
-        `QUY TẮC BẮT BUỘC:\n` +
-        `1. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi KHÔNG LIÊN QUAN đến học tiếng Trung, lập tức từ chối lịch sự trong ĐÚNG 1 CÂU DƯỚI 15 TỪ vào trường "content": "Tôi là trợ lý tiếng Trung Phồn thể Đài Loan, chỉ hỗ trợ học tiếng và từ vựng." (Không điền các trường tw, pinyin, vi, explanation).\n` +
-        `2. LUÔN DÙNG CHỮ PHỒN THỂ ĐÀI LOAN (繁體字), KHÔNG BAO GIỜ dùng chữ Giản thể (简体字), KHÔNG dùng từ ngữ Đại Lục (ví dụ dùng: 捷運, 機車, 計程車, 便當, 買單, 垃圾桶, 影片...).\n` +
-        `3. CÂU MẪU CHUẨN XÁC: Cung cấp ĐÚNG 1 CÂU PHỒN THỂ DUY NHẤT vào 'tw' (CẤM chữ Giản thể, CẤM chữ Latinh/tiếng Việt, CẤM '- 或者 -'). Điền đầy đủ 'pinyin' có dấu, 'vi' (nghĩa tiếng Việt sạch), 'explanation' (lưu ý văn hóa ngắn gọn) và 'content' (lời giải đáp thân thiện).` +
+        `PHẠM VI HOẠT ĐỘNG:\n` +
+        `- Hỗ trợ học tiếng Trung Phồn thể Đài Loan: từ vựng, ngữ pháp, mẫu câu, giải nghĩa, văn hóa đời sống.\n\n` +
+        `NGUYÊN TẮC PHẢN HỒI (TASK-FOCUSED & ANTI-OVERINTERPRETATION):\n` +
+        `1. ĐÚNG TRỌNG TÂM: Trả lời thẳng vào câu hỏi của người dùng, ngắn gọn, súc tích bằng tiếng Việt tự nhiên trong trường 'content'.\n` +
+        `2. HỎI NGHĨA TỪ/CÂU: Nếu người dùng hỏi nghĩa của một từ hoặc câu (ví dụ: "「便當」 nghĩa là gì?"), BẮT BUỘC cung cấp từ gốc đó vào 'tw' (100% chữ Phồn thể), 'pinyin' có thanh điệu đầy đủ, và 'vi' (nghĩa tiếng Việt chính xác). Không tự ý chêm lịch sử từ nguyên nếu không được hỏi.\n` +
+        `3. KHÔNG SUY DIỄN MỘT CHIỀU: Khi câu nói của người Đài mơ hồ hoặc có nhiều cách hiểu (ví dụ: 「改天再約」), nêu rõ đây có thể là lời hẹn chưa chốt ngày hoặc lời chào xã giao; chỉ riêng câu nói chưa đủ thông tin để kết luận chắc chắn ý định của đối phương.\n` +
+        `4. 100% CHỮ PHỒN THỂ ĐÀI LOAN: Mọi chữ Hán trong 'tw' phải là Phồn thể chuẩn (繁體字), tuyệt đối không dùng Giản thể.\n` +
+        `5. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi hoàn toàn không liên quan tiếng Trung, từ chối lịch sự trong 'content' dưới 15 từ, các trường khác để chuỗi rỗng "".` +
         feedbackSection;
 
       const reply = await callGemini<AiChatReply>(
@@ -1686,7 +1740,7 @@ export async function sendAiChatMessage(
         AI_CHAT_RESPONSE_SCHEMA,
         1200,
         flashSystem,
-        AI_CHAT_MODELS
+        { overrideModels: AI_CHAT_MODELS, thinkingLevel: 'minimal' }
       );
 
       if (reply.tw) {
@@ -1696,54 +1750,61 @@ export async function sendAiChatMessage(
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // 🧠 CHẾ ĐỘ 2: REASONING (Quy trình thẩm định 2 lượt ngầm + Phễu lọc Sanitizer)
+    // 🧠 CHẾ ĐỘ 2: REASONING (Quy trình 2 lượt: Tạo bản nháp -> Kiểm định & Sửa lỗi)
     // ══════════════════════════════════════════════════════════════════════════
-    // LƯỢT 1: Deep Scenario Brainstorming (AI tự do phân tích tâm lý, ngữ cảnh, từ vựng bản xứ)
+    // LƯỢT 1: Tạo bản phác thảo tự do (Drafting Pass - thinkingLevel: 'medium')
     const pass1System =
-      `Bạn là Chuyên gia ngôn ngữ & Chiến lược giao tiếp thực chiến Đài Loan (Taiwanese Local Cultural & Linguistic Coach).\n\n` +
-      `Nhiệm vụ của bạn là phân tích sâu sắc câu hỏi tình huống của người dùng để xây dựng chiến lược giao tiếp chuẩn bản xứ:\n` +
-      `1. PHÂN TÍCH TÂM LÝ & NGỮ CẢNH THỰC TẾ: Bối cảnh đời thường tại Đài Loan diễn ra thế nào? Đối phương có tâm lý gì? Cần mở lời thế nào để lịch sự và đạt hiệu quả cao nhất (ví dụ thói quen dùng 不好意思, 請問, 謝謝)?\n` +
-      `2. 3 PHƯƠNG ÁN NÓI THEO SẮC THÁI:\n` +
-      `   - Phương án 1 (Khuyên dùng nhất / Lịch sự nhất)\n` +
-      `   - Phương án 2 (Ngắn gọn / Tự lách qua hoặc tự xử lý đời thường)\n` +
-      `   - Phương án 3 (Khi cần dứt khoát hoặc rõ ràng hơn)\n` +
-      `3. TỪ VỰNG ĐẮT GIÁ: 2-3 từ khẩu ngữ đắt giá của người Đài (kèm bính âm pinyin có dấu và nghĩa tiếng Việt). Cảnh báo từ Giản thể hoặc từ Đại Lục cần TUYỆT ĐỐI TRÁNH.\n` +
-      `4. LƯU Ý VĂN HÓA ỨNG XỬ: Ghi chú văn hóa súc tích giúp người dùng tự tin.` +
+      `Bạn là Chuyên gia ngôn ngữ & Đời sống Đài Loan (Taiwanese Linguistic & Context Drafter).\n\n` +
+      `Nhiệm vụ: Tạo bản phác thảo câu trả lời tốt nhất cho câu hỏi của người dùng dựa trên bối cảnh thực tế tại Đài Loan:\n` +
+      `- Trả lời trực diện, tự nhiên, đúng trọng tâm câu hỏi.\n` +
+      `- Nếu hỏi câu giao tiếp: Đưa ra cách diễn đạt tự nhiên nhất của người Đài (100% Phồn thể, có pinyin và nghĩa tiếng Việt).\n` +
+      `- Nếu hỏi nghĩa một từ (như 「便當」): Giải thích đúng nghĩa súc tích, không đưa từ nguyên ngoài lề nếu không hỏi.\n` +
+      `- Nếu hỏi ý nghĩa câu/từ mơ hồ (như 「改天再約」): Phân biệt rõ ràng điều quan sát được, các khả năng có thể xảy ra và điều chưa thể kết luận nếu thiếu dữ kiện.\n` +
+      `- Nếu người dùng nhờ sửa câu: Giữ nguyên ý định gốc của người dùng, chỉ ra vấn đề chữ viết hoặc sắc thái và đề xuất cách nói lịch thiệp.\n` +
+      `- Không ép buộc phải có 3 phương án, không ép buộc phải có từ vựng hay văn hóa nếu không cần thiết.` +
       feedbackSection;
 
-    let pass1Notes = '';
+    let pass1Draft = '';
     try {
-      const p1Res = await callGemini<{ analysis: string } | string>(
-        [{ text: `${historySection}TÌNH HUỐNG NGƯỜI DÙNG HỎI: "${query}"\n\nHãy phân tích chuyên sâu các khía cạnh trên.` }],
-        { type: 'OBJECT', properties: { analysis: { type: 'STRING' } }, required: ['analysis'] },
-        1500,
+      const p1Res = await callGemini<{ draft: string } | string>(
+        [{ text: `${historySection}CÂU HỎI CỦA NGƯỜI DÙNG: "${query}"\n\nHãy tạo bản phác thảo câu trả lời tốt nhất.` }],
+        { type: 'OBJECT', properties: { draft: { type: 'STRING' } }, required: ['draft'] },
+        2500,
         pass1System,
-        AI_CHAT_MODELS
+        { overrideModels: AI_CHAT_MODELS, thinkingLevel: 'medium' }
       );
-      pass1Notes = typeof p1Res === 'string' ? p1Res : (p1Res as any)?.analysis || '';
+      pass1Draft = typeof p1Res === 'string' ? p1Res : (p1Res as any)?.draft || '';
     } catch (p1Err) {
       console.warn('[Reasoning] Pass 1 notice:', p1Err);
     }
 
-    // LƯỢT 2: Strict Quality Auditor & Multi-Tier Clean JSON Extraction Pass
+    // LƯỢT 2: Kiểm định độc lập, phát hiện lỗi và chỉnh sửa (Audit & Refine Pass - thinkingLevel: 'high')
     const pass2System =
-      `Bạn là Trưởng ban Kiểm định Chất lượng Tiếng Trung Đài Loan (Taiwanese Traditional Chinese Quality Auditor).\n\n` +
-      `Nhiệm vụ của bạn là thẩm định bản phân tích chuyên sâu của chuyên gia và đóng gói thành JSON hoàn hảo theo schema.\n\n` +
-      `QUY TẮC THẨM ĐỊNH BẮT BUỘC (CRITICAL QUALITY RULES):\n` +
-      `1. NGÔN NGỮ CỦA TỪNG TRƯỜNG:\n` +
-      `   - 'content', 'thought_summary', 'vi', 'explanation', 'cultural_insight', và 'tag' BẮT BUỘC VIẾT BẰNG TIẾNG VIỆT tự nhiên, thân thiện.\n` +
-      `   - 'tw' và 'word' BẮT BUỘC LÀ 100% CHỮ HÁN PHỒN THỂ ĐÀI LOAN (繁體字).\n` +
-      `2. 100% CHỮ HÁN PHỒN THỂ ĐÀI LOAN: Mọi câu tiếng Trung trong 'primary_phrase' và 'variations' BẮT BUỘC dùng chữ Phồn thể chuẩn Đài Loan. TUYỆT ĐỐI CẤM chữ Giản thể (phải dùng 還 thay 还, 裡 thay 里, 移動 thay 移动, 挪 thay 挪, 車 thay 车, 門 thay 门).\n` +
-      `3. TUYỆT ĐỐI CẤM TIẾNG ANH & TIẾNG VIỆT TRONG CÂU TIẾNG TRUNG: Các trường 'tw' chỉ chứa thuần túy chữ Hán và dấu câu tiếng Trung (，、？！). TUYỆT ĐỐI CẤM từ tiếng Anh (như spaces, bus, ok), CẤM từ tiếng Việt (như Bổ sung, chỗ đứng), CẤM dấu gạch nối '- 或者 -' hay '/'. Mỗi mục là ĐÚNG 1 CÂU DUY NHẤT!\n` +
-      `4. PINYIN BẮT BUỘC ĐẦY ĐỦ: BẮT BUỘC phải có trường 'pinyin' với đầy đủ dấu thanh điệu, khớp chính xác từng chữ Hán.\n` +
-      `5. TIẾNG VIỆT RÕ RÀNG: Trường 'vi' CHỈ LÀ câu dịch tiếng Việt sạch sẽ. Mọi giải thích phải đưa vào 'explanation' hoặc 'cultural_insight'.\n` +
-      `6. TỪ CHỐI NGOÀI PHẠM VI: Nếu câu hỏi không liên quan đến học tiếng Trung, chỉ điền lời từ chối lịch sự vào 'content' và để trống các trường tiếng Trung.`;
+      `Bạn là Trưởng ban Kiểm định Chất lượng Tiếng Trung Đài Loan (Taiwanese Traditional Chinese Quality Auditor & Editor).\n\n` +
+      `Nhiệm vụ: Tiếp nhận câu hỏi gốc của người dùng và Bản phác thảo (Draft) từ Lượt 1 để tiến hành kiểm định độc lập, phát hiện lỗi và chỉnh sửa trực tiếp thành kết quả cuối cùng theo schema.\n\n` +
+      `BỘ TIÊU CHÍ KIỂM ĐỊNH & SỬA LỖI:\n` +
+      `1. TRỌNG TÂM: Bản thảo đã trả lời đúng câu hỏi chưa? Với câu hỏi nghĩa từ (như 「便當」), BẮT BUỘC điền thẻ chính 'primary_phrase' (tw, pinyin, vi) đầy đủ, và KHÔNG đưa thông tin từ nguyên ngoài lề (như Ekiben) nếu người dùng không hỏi.\n` +
+      `2. CHÍNH TẢ PHỒN THỂ & ĐỘ TỰ NHIÊN ĐÀI LOAN: Kiểm tra từng chữ Hán trong 'primary_phrase' và 'variations'. BẮT BUỘC 100% Phồn thể chuẩn Đài Loan. Phát hiện và sửa ngay mọi chữ Giản thể (phải dùng 還 thay 还, 裡 thay 里, 門 thay 门, 車 thay 车, 讓 thay 让, 擠 thay 挤, 幫 thay 帮...).\n` +
+      `3. BÍNH ÂM & BẢN DỊCH: Bính âm phải có đầy đủ thanh điệu chuẩn xác, khớp từng chữ Hán. Bản dịch tiếng Việt chuẩn xác, giữ đúng nghĩa.\n` +
+      `4. CHỐNG SUY DIỄN VÕ ĐOÁN (EPISTEMIC HUMILITY): Với câu mơ hồ (như 「改天再約」), PHẢI phân biệt rõ: điều quan sát được (chưa có ngày cụ thể) vs các khả năng (hẹn thật chờ dời lịch / xã giao / từ chối khéo) vs dấu hiệu cần quan sát thêm. TUYỆT ĐỐI KHÔNG mặc định khẳng định một khả năng là chắc chắn khi thiếu ngữ cảnh.\n` +
+      `5. GIỮ NGUYÊN Ý ĐỊNH GỐC KHI SỬA CÂU: Khi người dùng nhờ sửa câu (ví dụ: '你可以让开吗，我要下车'), câu sửa PHẢI giữ được đầy đủ ý định ban đầu (ý 'tôi muốn xuống xe'), gợi ý câu xin phép lịch sự: 「不好意思，我要下車，可以借過一下嗎？謝謝。」; đồng thời bóc tách rõ 3 khía cạnh: chữ Giản thể, sắc thái cộc cằn, và cách diễn đạt nhã nhặn.\n` +
+      `6. CHUẨN XÁC VĂN HÓA & NGỮ ÂM: Khi giải thích văn hóa (như kiêng số 4), phải chuẩn ngữ âm: 「四」(sì) và 「死」(sǐ) là phát âm gần nhau (near-homophones) do khác thanh điệu. Tránh quy chụp tuyệt đối hóa cho mọi người hay mọi hoàn cảnh.\n` +
+      `7. CẮT TỈA SCHEMA (ANTI-BLOAT): Nếu không có biến thể thực sự hữu ích, để 'variations' = []. Nếu không có từ vựng then chốt cần học thêm, để 'key_words' = []. Nếu không có lưu ý văn hóa đặc thù, để 'cultural_insight' = "". Không tự bịa nội dung cho đầy form.\n` +
+      `8. NGUYÊN TẮC CHỈNH SỬA: Nếu bản phác thảo đã chuẩn mực, giữ nguyên, KHÔNG ĐƯỢC tự bịa lỗi. Nếu có lỗi, sửa ngay vào kết quả cuối. Ghi tóm tắt hành động kiểm định vào 'audit_notes'.\n` +
+      `9. 'thought_summary': Viết lời giải thích súc tích, mang tính sư phạm dành cho NGƯỜI HỌC (về bối cảnh và lý do chọn câu nói này). KHÔNG đưa nhật ký soi lỗi kỹ thuật vào trường này.`;
 
     const pass2Schema = {
       type: 'OBJECT',
       properties: {
+        audit_notes: {
+          type: 'STRING',
+          description: 'Nhật ký kiểm định kỹ thuật nội bộ (liệt kê các lỗi được phát hiện và đã sửa, hoặc xác nhận bản nháp đã chuẩn).',
+        },
+        thought_summary: {
+          type: 'STRING',
+          description: 'Giải thích sư phạm súc tích dành cho người học về lý do chọn cách diễn đạt hoặc lưu ý ngữ cảnh.',
+        },
         content: { type: 'STRING' },
-        thought_summary: { type: 'STRING' },
         primary_phrase: {
           type: 'OBJECT',
           properties: {
@@ -1781,21 +1842,26 @@ export async function sendAiChatMessage(
         },
         cultural_insight: { type: 'STRING' },
       },
-      required: ['content', 'thought_summary', 'primary_phrase', 'variations', 'key_words', 'cultural_insight'],
+      required: ['audit_notes', 'thought_summary', 'content', 'primary_phrase', 'variations', 'key_words', 'cultural_insight'],
     };
 
     const pass2Prompt =
       `CÂU HỎI CỦA NGƯỜI DÙNG: "${query}"\n\n` +
-      (pass1Notes ? `BẢN PHÂN TÍCH CHUYÊN SÂU:\n${pass1Notes}\n\n` : '') +
-      `Hãy thẩm định và đóng gói thành JSON hoàn hảo theo schema. Viết toàn bộ phần giải thích, dịch nghĩa và nhận xét bằng tiếng Việt.`;
+      (pass1Draft ? `BẢN PHÁC THẢO LƯỢT 1:\n${pass1Draft}\n\n` : '') +
+      `Hãy kiểm định độc lập, phát hiện lỗi, sửa lỗi và đóng gói thành JSON hoàn hảo theo schema. Viết toàn bộ phần giải thích, dịch nghĩa và nhận xét bằng tiếng Việt.`;
 
     const parsed = await callGemini<any>(
       [{ text: pass2Prompt }],
       pass2Schema,
-      2500,
+      3500,
       pass2System,
-      AI_CHAT_MODELS
+      { overrideModels: AI_CHAT_MODELS, thinkingLevel: 'high' }
     );
+
+    // Chỉ ghi audit_notes vào console log khi ở chế độ phát triển (__DEV__), không lưu vào DB hay gửi lên UI
+    if (typeof __DEV__ !== 'undefined' && __DEV__ && parsed?.audit_notes) {
+      console.log('[Reasoning Audit Delta]:', parsed.audit_notes);
+    }
 
     // LƯỢT 3: Phễu lọc an toàn bằng Code (Programmatic Sanitizer - 0ms)
     const primaryTw = cleanChineseSentence(parsed?.primary_phrase?.tw || '');
