@@ -40,6 +40,8 @@ See:
 
 ## Security notes
 
+See [SECURITY.md](./SECURITY.md) for a historical credential-exposure finding and required release actions.
+
 - Do not commit `.env` or API credentials.
 - `EXPO_PUBLIC_*` variables are bundled into the client application. Never use them for shared production secrets.
 - For broader distribution, choose and implement a secure API-key strategy (user-provided keys or an authenticated, rate-limited backend).
