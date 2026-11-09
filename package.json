@@ -34,7 +34,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "eas:init": "npx eas-cli@latest init",
+    "build:android:apk": "npx eas-cli@latest build --platform android --profile preview-apk",
+    "build:android:aab": "npx eas-cli@latest build --platform android --profile production-aab"
   },
   "private": true
 }
